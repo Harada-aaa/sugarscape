@@ -118,9 +118,12 @@
         "neighborhoodMode": "vonNeumann",
         "profileMode": false,
         "screenshots": false,
-        "simulationMode": "normal",
+        "simulationMode": "llm",
         "ollamaEndpoint": "http://127.0.0.1:11434",
-        "ollamaModel": "nemotron3:33b",
+        "ollamaModel": "nemotron-3-nano:4b",
+        "ollamaOptions": {
+            "num_predict": 128
+        },
         "ollamaTimeout": 10,
         "seed": -1,
         "startingAgents": 250,

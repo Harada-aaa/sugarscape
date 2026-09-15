@@ -4,10 +4,11 @@ import urllib.request
 
 
 class OllamaClient:
-    def __init__(self, endpoint, model, timeout):
+    def __init__(self, endpoint, model, timeout, options=None):
         self.endpoint = endpoint.rstrip("/")
         self.model = model
         self.timeout = timeout
+        self.options = options or {}
 
     def choose_cell(self, agent_state, candidates):
         prompt = {
@@ -19,7 +20,8 @@ class OllamaClient:
             "model": self.model,
             "prompt": json.dumps(prompt),
             "stream": False,
-            "format": "json"
+            "format": "json",
+            "options": self.options
         }).encode("utf-8")
         request = urllib.request.Request(
             f"{self.endpoint}/api/generate",

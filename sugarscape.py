@@ -23,7 +23,8 @@ class Sugarscape:
         self.diseaseConfigHashes = None
         self.configuration = configuration
         self.ollamaClient = ollama_client.OllamaClient(
-            configuration["ollamaEndpoint"], configuration["ollamaModel"], configuration["ollamaTimeout"])
+            configuration["ollamaEndpoint"], configuration["ollamaModel"], configuration["ollamaTimeout"],
+            configuration["ollamaOptions"])
         self.maxTimestep = configuration["timesteps"]
         self.timestep = 0
         self.nextAgentID = 0
@@ -473,6 +474,8 @@ class Sugarscape:
         self.removeDeadAgents()
         self.endLog(self.log)
         self.endLog(self.agentLog)
+        print("=== Simulation results ===")
+        print("totalHappiness: " + str(self.runtimeStats["totalHappiness"]))
         if "all" in self.debug or "sugarscape" in self.debug:
             print(str(self))
         exit(0)
@@ -1544,12 +1547,15 @@ def verifyConfiguration(configuration):
     configuration.setdefault("ollamaEndpoint", "http://127.0.0.1:11434")
     configuration.setdefault("ollamaModel", "nemotron3:33b")
     configuration.setdefault("ollamaTimeout", 10)
+    configuration.setdefault("ollamaOptions", {})
     if configuration["simulationMode"] not in ["normal", "llm"]:
         configuration["simulationMode"] = "normal"
     if configuration["agentDistributionMode"] not in ["uniform", "distributed"]:
         configuration["agentDistributionMode"] = "uniform"
     if configuration["ollamaTimeout"] <= 0:
         configuration["ollamaTimeout"] = 10
+    if not isinstance(configuration["ollamaOptions"], dict):
+        configuration["ollamaOptions"] = {}
 
     negativesAllowed = ["agentDecisionModelAgeismFactor", "agentDecisionModelRacismFactor", "agentDecisionModelSexismFactor", "agentDecisionModelTribalFactor", "agentMaxAge", "agentSelfishnessFactor"]
     negativesAllowed += ["diseaseAggressionPenalty", "diseaseFertilityPenalty", "diseaseFriendlinessPenalty", "diseaseHappinessPenalty", "diseaseMovementPenalty"]
@@ -1968,6 +1974,7 @@ if __name__ == "__main__":
                      "neighborhoodMode": "vonNeumann",
                      "ollamaEndpoint": "http://127.0.0.1:11434",
                      "ollamaModel": "nemotron3:33b",
+                     "ollamaOptions": {},
                      "ollamaTimeout": 10,
                      "profileMode": False,
                      "screenshots": False,
@@ -1981,6 +1988,9 @@ if __name__ == "__main__":
     configuration = parseOptions(configuration)
     verifyRandomSeed(configuration)
     configuration = verifyConfiguration(configuration)
+    print("=== Simulation configuration ===")
+    print("simulationMode: " + configuration["simulationMode"])
+    print("agentDistributionMode: " + configuration["agentDistributionMode"])
     if configuration["headlessMode"] == False:
         import gui
     S = Sugarscape(configuration)

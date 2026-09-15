@@ -142,6 +142,10 @@ ollamaModel: string
     Ollama model name used by LLM mode.
     Default: "nemotron3:33b"
 
+ollamaOptions: object
+    Options passed to Ollama's /api/generate endpoint for each agent decision. Use "num_predict" to set the maximum number of generated tokens per decision. Other Ollama options such as "temperature", "top_p", and "num_ctx" can also be specified.
+    Default: {}
+
 ollamaTimeout: integer
     Request timeout in seconds. If Ollama is unavailable, the built-in decision process is used for that move.
     Default: 10
