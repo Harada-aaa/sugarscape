@@ -1558,7 +1558,7 @@ def verifyConfiguration(configuration):
     configuration.setdefault("agentDistributionMode", "uniform")
     configuration.setdefault("llmBackend", "vllm")
     configuration.setdefault("geminiEndpoint", "https://generativelanguage.googleapis.com/v1beta")
-    configuration.setdefault("geminiModel", "gemini-2.0-flash")
+    configuration.setdefault("geminiModel", "gemini-3.6-flash")
     configuration.setdefault("geminiApiKey", None)
     configuration.setdefault("geminiTimeout", 30)
     configuration.setdefault("geminiOptions", {"temperature": 0.2})
@@ -2006,7 +2006,7 @@ if __name__ == "__main__":
                      "neighborhoodMode": "vonNeumann",
                      "llmBackend": "vllm",
                      "geminiEndpoint": "https://generativelanguage.googleapis.com/v1beta",
-                     "geminiModel": "gemini-2.0-flash",
+                     "geminiModel": "gemini-3.6-flash",
                      "geminiApiKey": None,
                      "geminiTimeout": 30,
                      "geminiOptions": {"temperature": 0.2},

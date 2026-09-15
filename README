@@ -140,7 +140,7 @@ geminiEndpoint: string
 
 geminiModel: string
     Gemini model name used when llmBackend is "gemini".
-    Default: "gemini-2.0-flash"
+    Default: "gemini-3.6-flash"
 
 geminiApiKey: string|null
     Optional Gemini API key. If null, the GEMINI_API_KEY environment variable is used.

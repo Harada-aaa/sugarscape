@@ -118,7 +118,7 @@
         "neighborhoodMode": "vonNeumann",
         "llmBackend": "vllm",
         "geminiEndpoint": "https://generativelanguage.googleapis.com/v1beta",
-        "geminiModel": "gemini-2.0-flash",
+        "geminiModel": "gemini-3.6-flash",
         "geminiApiKey": null,
         "geminiTimeout": 30,
         "geminiOptions": {

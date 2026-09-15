@@ -37,8 +37,14 @@ class GeminiClient:
             },
             method="POST"
         )
-        with urllib.request.urlopen(request, timeout=self.timeout) as response:
-            responseBody = json.loads(response.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                responseBody = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            details = error.read().decode("utf-8", errors="replace")
+            raise urllib.error.HTTPError(
+                error.url, error.code, f"{error.reason}: {details}", error.headers, None
+            ) from error
         content = responseBody["candidates"][0]["content"]["parts"][0]["text"]
         return json.loads(content)
 
