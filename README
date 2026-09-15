@@ -127,27 +127,27 @@ The simulation provides a default set of options in a dictionary in the sugarsca
 A JSON configuration file can be passed to the simulation, overwriting the default configuration, with the --conf option.
 
 simulationMode: string
-    Select "normal" for the built-in Sugarscape decision process or "llm" to ask Ollama to select destination cells. In LLM mode, one request is made per tribe and the response contains a decision for every living agent in that tribe. If tagging is disabled and an agent has no tribe, that agent uses its own request.
+    Select "normal" for the built-in Sugarscape decision process or "llm" to ask vLLM to select destination cells. In LLM mode, one request is made per tribe and the response contains a decision for every living agent in that tribe. If tagging is disabled and an agent has no tribe, that agent uses its own request.
     Default: "normal"
 
 agentDistributionMode: string
     Select "uniform" to give all agents the same numeric ability values or "distributed" to use the configured ranges.
     Default: "uniform"
 
-ollamaEndpoint: string
-    Ollama server URL used by LLM mode.
-    Default: "http://127.0.0.1:11434"
+vllmEndpoint: string
+    vLLM OpenAI-compatible API base URL used by LLM mode. The client appends "/chat/completions".
+    Default: "http://127.0.0.1:8000/v1"
 
-ollamaModel: string
-    Ollama model name used by LLM mode.
-    Default: "nemotron3:33b"
+vllmModel: string
+    vLLM model name used by LLM mode.
+    Default: "meta-llama/Llama-3.1-8B-Instruct"
 
-ollamaOptions: object
-    Options passed to Ollama's /api/generate endpoint for each agent decision. Use "num_predict" to set the maximum number of generated tokens per decision. Other Ollama options such as "temperature", "top_p", and "num_ctx" can also be specified.
+vllmOptions: object
+    Options passed to vLLM's /v1/chat/completions endpoint for each agent decision. Use "max_tokens" to set the maximum number of generated tokens per decision. Other OpenAI-compatible options such as "temperature" and "top_p" can also be specified.
     Default: {}
 
-ollamaTimeout: integer
-    Request timeout in seconds. If Ollama is unavailable, the built-in decision process is used for that move.
+vllmTimeout: integer
+    Request timeout in seconds. If vLLM is unavailable, the built-in decision process is used for that move.
     Default: 10
 
 agentAggressionFactor: [float, float]
