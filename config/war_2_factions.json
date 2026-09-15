@@ -19,7 +19,7 @@
         "agentLeader": false,
         "agentLendingFactor": [0, 0],
         "agentLoanDuration": [0, 0],
-        "agentLogfile": "war_2_factions_agents.json",
+        "agentLogfile": null,
         "agentLookaheadFactor": [0, 0],
         "agentMaleInfertilityAge": [0, 0],
         "agentMaleFertilityAge": [0, 0],
