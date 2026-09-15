@@ -127,7 +127,7 @@ The simulation provides a default set of options in a dictionary in the sugarsca
 A JSON configuration file can be passed to the simulation, overwriting the default configuration, with the --conf option.
 
 simulationMode: string
-    Select "normal" for the built-in Sugarscape decision process or "llm" to ask Ollama to select each agent's destination cell.
+    Select "normal" for the built-in Sugarscape decision process or "llm" to ask Ollama to select destination cells. In LLM mode, one request is made per tribe and the response contains a decision for every living agent in that tribe. If tagging is disabled and an agent has no tribe, that agent uses its own request.
     Default: "normal"
 
 agentDistributionMode: string

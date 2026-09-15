@@ -64,6 +64,7 @@ class Sugarscape:
         self.agentEndowments = []
         self.agentLeader = None
         self.agents = []
+        self.ollamaFactionDecisions = {}
         self.bornAgents = []
         self.deadAgents = []
         self.depression = True if configuration["agentDepressionPercentage"] > 0 else False
