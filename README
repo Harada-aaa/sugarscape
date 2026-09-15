@@ -130,6 +130,26 @@ simulationMode: string
     Select "normal" for the built-in Sugarscape decision process or "llm" to ask vLLM to select destination cells. In LLM mode, one request is made per tribe and the response contains a decision for every living agent in that tribe. If tagging is disabled and an agent has no tribe, that agent uses its own request.
     Default: "normal"
 
+llmBackend: string
+    Select the LLM server used when simulationMode is "llm": "vllm" or "ollama".
+    Default: "vllm"
+
+ollamaEndpoint: string
+    Ollama server URL used when llmBackend is "ollama".
+    Default: "http://127.0.0.1:11434"
+
+ollamaModel: string
+    Ollama model name used when llmBackend is "ollama".
+    Default: "llama3.1:8b"
+
+ollamaOptions: object
+    Options passed to Ollama's /api/generate endpoint.
+    Default: {}
+
+ollamaTimeout: integer
+    Ollama request timeout in seconds.
+    Default: 10
+
 agentDistributionMode: string
     Select "uniform" to give all agents the same numeric ability values or "distributed" to use the configured ranges.
     Default: "uniform"

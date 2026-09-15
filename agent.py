@@ -731,7 +731,7 @@ class Agent:
         if sugarscape.configuration["simulationMode"] == "llm":
             factionID = self.tribe if self.tribe != None else f"agent-{self.ID}"
             factionKey = (self.timestep, str(factionID))
-            if factionKey not in sugarscape.vllmFactionDecisions:
+            if factionKey not in sugarscape.llmFactionDecisions:
                 factionAgents = [agent for agent in sugarscape.agents
                                   if agent.isAlive() and (agent.tribe == self.tribe if self.tribe != None else agent == self)]
                 factionState = []
@@ -751,8 +751,8 @@ class Agent:
                                         "wealth": round(record["wealth"], 2), "distance": record["range"]}
                                        for index, record in enumerate(agentCandidates)]
                     })
-                sugarscape.vllmFactionDecisions[factionKey] = sugarscape.vllmClient.choose_cells(factionState)
-            selectedCandidate = sugarscape.vllmFactionDecisions[factionKey].get(str(self.ID))
+                sugarscape.llmFactionDecisions[factionKey] = sugarscape.llmClient.choose_cells(factionState)
+            selectedCandidate = sugarscape.llmFactionDecisions[factionKey].get(str(self.ID))
             if selectedCandidate is not None and 0 <= selectedCandidate < len(potentialCells):
                 bestCell = potentialCells[selectedCandidate]["cell"]
 

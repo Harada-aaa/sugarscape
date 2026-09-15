@@ -15,6 +15,7 @@ import random
 import re
 import sys
 
+import ollama_client
 import vllm_client
 
 class Sugarscape:
@@ -22,9 +23,14 @@ class Sugarscape:
         self.agentConfigHashes = None
         self.diseaseConfigHashes = None
         self.configuration = configuration
-        self.vllmClient = vllm_client.VLLMClient(
-            configuration["vllmEndpoint"], configuration["vllmModel"], configuration["vllmTimeout"],
-            configuration["vllmOptions"])
+        if configuration["llmBackend"] == "ollama":
+            self.llmClient = ollama_client.OllamaClient(
+                configuration["ollamaEndpoint"], configuration["ollamaModel"], configuration["ollamaTimeout"],
+                configuration["ollamaOptions"])
+        else:
+            self.llmClient = vllm_client.VLLMClient(
+                configuration["vllmEndpoint"], configuration["vllmModel"], configuration["vllmTimeout"],
+                configuration["vllmOptions"])
         self.maxTimestep = configuration["timesteps"]
         self.timestep = 0
         self.nextAgentID = 0
@@ -64,7 +70,7 @@ class Sugarscape:
         self.agentEndowments = []
         self.agentLeader = None
         self.agents = []
-        self.vllmFactionDecisions = {}
+        self.llmFactionDecisions = {}
         self.bornAgents = []
         self.deadAgents = []
         self.depression = True if configuration["agentDepressionPercentage"] > 0 else False
@@ -1545,16 +1551,27 @@ def sortConfigurationTimeframes(configuration, timeframe):
 def verifyConfiguration(configuration):
     configuration.setdefault("simulationMode", "normal")
     configuration.setdefault("agentDistributionMode", "uniform")
+    configuration.setdefault("llmBackend", "vllm")
+    configuration.setdefault("ollamaEndpoint", "http://127.0.0.1:11434")
+    configuration.setdefault("ollamaModel", "llama3.1:8b")
+    configuration.setdefault("ollamaTimeout", 10)
+    configuration.setdefault("ollamaOptions", {})
     configuration.setdefault("vllmEndpoint", "http://127.0.0.1:8000/v1")
     configuration.setdefault("vllmModel", "meta-llama/Llama-3.1-8B-Instruct")
     configuration.setdefault("vllmTimeout", 10)
     configuration.setdefault("vllmOptions", {})
     if configuration["simulationMode"] not in ["normal", "llm"]:
         configuration["simulationMode"] = "normal"
+    if configuration["llmBackend"] not in ["vllm", "ollama"]:
+        configuration["llmBackend"] = "vllm"
     if configuration["agentDistributionMode"] not in ["uniform", "distributed"]:
         configuration["agentDistributionMode"] = "uniform"
     if configuration["vllmTimeout"] <= 0:
         configuration["vllmTimeout"] = 10
+    if configuration["ollamaTimeout"] <= 0:
+        configuration["ollamaTimeout"] = 10
+    if not isinstance(configuration["ollamaOptions"], dict):
+        configuration["ollamaOptions"] = {}
     if not isinstance(configuration["vllmOptions"], dict):
         configuration["vllmOptions"] = {}
 
@@ -1973,6 +1990,11 @@ if __name__ == "__main__":
                      "logfile": None,
                      "logfileFormat": "json",
                      "neighborhoodMode": "vonNeumann",
+                     "llmBackend": "vllm",
+                     "ollamaEndpoint": "http://127.0.0.1:11434",
+                     "ollamaModel": "llama3.1:8b",
+                     "ollamaOptions": {},
+                     "ollamaTimeout": 10,
                      "vllmEndpoint": "http://127.0.0.1:8000/v1",
                      "vllmModel": "meta-llama/Llama-3.1-8B-Instruct",
                      "vllmOptions": {},
