@@ -15,11 +15,15 @@ import random
 import re
 import sys
 
+import ollama_client
+
 class Sugarscape:
     def __init__(self, configuration):
         self.agentConfigHashes = None
         self.diseaseConfigHashes = None
         self.configuration = configuration
+        self.ollamaClient = ollama_client.OllamaClient(
+            configuration["ollamaEndpoint"], configuration["ollamaModel"], configuration["ollamaTimeout"])
         self.maxTimestep = configuration["timesteps"]
         self.timestep = 0
         self.nextAgentID = 0
@@ -682,6 +686,10 @@ class Sugarscape:
             increment = 10 ** (-1 * decimals)
             configurations[config]["inc"] = increment
             configurations[config]["decimals"] = decimals
+
+        if configs["agentDistributionMode"] == "uniform":
+            for config in configurations.values():
+                config["max"] = config["min"]
 
         decisionModels = []
         endowments = []
@@ -1531,6 +1539,18 @@ def sortConfigurationTimeframes(configuration, timeframe):
     return config
 
 def verifyConfiguration(configuration):
+    configuration.setdefault("simulationMode", "normal")
+    configuration.setdefault("agentDistributionMode", "uniform")
+    configuration.setdefault("ollamaEndpoint", "http://127.0.0.1:11434")
+    configuration.setdefault("ollamaModel", "nemotron3:33b")
+    configuration.setdefault("ollamaTimeout", 10)
+    if configuration["simulationMode"] not in ["normal", "llm"]:
+        configuration["simulationMode"] = "normal"
+    if configuration["agentDistributionMode"] not in ["uniform", "distributed"]:
+        configuration["agentDistributionMode"] = "uniform"
+    if configuration["ollamaTimeout"] <= 0:
+        configuration["ollamaTimeout"] = 10
+
     negativesAllowed = ["agentDecisionModelAgeismFactor", "agentDecisionModelRacismFactor", "agentDecisionModelSexismFactor", "agentDecisionModelTribalFactor", "agentMaxAge", "agentSelfishnessFactor"]
     negativesAllowed += ["diseaseAggressionPenalty", "diseaseFertilityPenalty", "diseaseFriendlinessPenalty", "diseaseHappinessPenalty", "diseaseMovementPenalty"]
     negativesAllowed += ["diseaseSpiceMetabolismPenalty", "diseaseSugarMetabolismPenalty", "diseaseTimeframe", "diseaseVisionPenalty"]
@@ -1842,6 +1862,7 @@ def verifyRandomSeed(configuration):
 if __name__ == "__main__":
     # Set default values for simulation configuration
     configuration = {"agentAggressionFactor": [0, 0],
+                     "agentDistributionMode": "uniform",
                      "agentBaseInterestRate": [0.0, 0.0],
                      "agentDecisionModels": ["none"],
                      "agentDecisionModel": None,
@@ -1945,8 +1966,12 @@ if __name__ == "__main__":
                      "logfile": None,
                      "logfileFormat": "json",
                      "neighborhoodMode": "vonNeumann",
+                     "ollamaEndpoint": "http://127.0.0.1:11434",
+                     "ollamaModel": "nemotron3:33b",
+                     "ollamaTimeout": 10,
                      "profileMode": False,
                      "screenshots": False,
+                     "simulationMode": "normal",
                      "seed": -1,
                      "startingAgents": 250,
                      "startingDiseases": 0,

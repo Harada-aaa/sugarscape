@@ -727,7 +727,26 @@ class Agent:
         potentialCells = self.rankCellsInRange()
         greedyBestCell = potentialCells[0]["cell"]
 
-        if self.decisionModelFactor > 0:
+        sugarscape = self.cell.environment.sugarscape
+        if sugarscape.configuration["simulationMode"] == "llm":
+            selectedCandidate = sugarscape.ollamaClient.choose_cell(
+                {
+                    "id": self.ID,
+                    "age": self.age,
+                    "sugar": round(self.sugar, 2),
+                    "spice": round(self.spice, 2),
+                    "sugarMetabolism": self.findSugarMetabolism(),
+                    "spiceMetabolism": self.findSpiceMetabolism(),
+                    "happiness": round(self.happiness, 2)
+                },
+                [{"candidate": index, "x": record["cell"].x, "y": record["cell"].y,
+                  "wealth": round(record["wealth"], 2), "distance": record["range"]}
+                 for index, record in enumerate(potentialCells)]
+            )
+            if selectedCandidate is not None:
+                bestCell = potentialCells[selectedCandidate]["cell"]
+
+        if bestCell is None and self.decisionModelFactor > 0:
             bestCell = self.findBestEthicalCell(potentialCells[:], greedyBestCell)
         if bestCell == None:
             bestCell = greedyBestCell
