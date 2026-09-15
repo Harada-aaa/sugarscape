@@ -131,8 +131,28 @@ simulationMode: string
     Default: "normal"
 
 llmBackend: string
-    Select the LLM server used when simulationMode is "llm": "vllm" or "ollama".
+    Select the LLM server used when simulationMode is "llm": "vllm", "ollama", or "gemini".
     Default: "vllm"
+
+geminiEndpoint: string
+    Google Gemini API base URL used when llmBackend is "gemini".
+    Default: "https://generativelanguage.googleapis.com/v1beta"
+
+geminiModel: string
+    Gemini model name used when llmBackend is "gemini".
+    Default: "gemini-2.0-flash"
+
+geminiApiKey: string|null
+    Optional Gemini API key. If null, the GEMINI_API_KEY environment variable is used.
+    Default: null
+
+geminiTimeout: integer
+    Gemini request timeout in seconds.
+    Default: 30
+
+geminiOptions: object
+    Generation options passed to Gemini's generateContent endpoint, such as "temperature" and "maxOutputTokens".
+    Default: {"temperature": 0.2}
 
 ollamaEndpoint: string
     Ollama server URL used when llmBackend is "ollama".

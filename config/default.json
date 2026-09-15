@@ -117,6 +117,13 @@
         "logfileFormat": "json",
         "neighborhoodMode": "vonNeumann",
         "llmBackend": "vllm",
+        "geminiEndpoint": "https://generativelanguage.googleapis.com/v1beta",
+        "geminiModel": "gemini-2.0-flash",
+        "geminiApiKey": null,
+        "geminiTimeout": 30,
+        "geminiOptions": {
+            "temperature": 0.2
+        },
         "ollamaEndpoint": "http://127.0.0.1:11434",
         "ollamaModel": "llama3.1:8b",
         "ollamaOptions": {},

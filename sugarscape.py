@@ -5,6 +5,7 @@ import cell
 import condition
 import environment
 import ethics
+import gemini_client
 
 import copy
 import getopt
@@ -27,6 +28,10 @@ class Sugarscape:
             self.llmClient = ollama_client.OllamaClient(
                 configuration["ollamaEndpoint"], configuration["ollamaModel"], configuration["ollamaTimeout"],
                 configuration["ollamaOptions"])
+        elif configuration["llmBackend"] == "gemini":
+            self.llmClient = gemini_client.GeminiClient(
+                configuration["geminiEndpoint"], configuration["geminiModel"], configuration["geminiTimeout"],
+                configuration["geminiOptions"], configuration["geminiApiKey"])
         else:
             self.llmClient = vllm_client.VLLMClient(
                 configuration["vllmEndpoint"], configuration["vllmModel"], configuration["vllmTimeout"],
@@ -1552,6 +1557,11 @@ def verifyConfiguration(configuration):
     configuration.setdefault("simulationMode", "normal")
     configuration.setdefault("agentDistributionMode", "uniform")
     configuration.setdefault("llmBackend", "vllm")
+    configuration.setdefault("geminiEndpoint", "https://generativelanguage.googleapis.com/v1beta")
+    configuration.setdefault("geminiModel", "gemini-2.0-flash")
+    configuration.setdefault("geminiApiKey", None)
+    configuration.setdefault("geminiTimeout", 30)
+    configuration.setdefault("geminiOptions", {"temperature": 0.2})
     configuration.setdefault("ollamaEndpoint", "http://127.0.0.1:11434")
     configuration.setdefault("ollamaModel", "llama3.1:8b")
     configuration.setdefault("ollamaTimeout", 10)
@@ -1562,7 +1572,7 @@ def verifyConfiguration(configuration):
     configuration.setdefault("vllmOptions", {})
     if configuration["simulationMode"] not in ["normal", "llm"]:
         configuration["simulationMode"] = "normal"
-    if configuration["llmBackend"] not in ["vllm", "ollama"]:
+    if configuration["llmBackend"] not in ["vllm", "ollama", "gemini"]:
         configuration["llmBackend"] = "vllm"
     if configuration["agentDistributionMode"] not in ["uniform", "distributed"]:
         configuration["agentDistributionMode"] = "uniform"
@@ -1570,10 +1580,14 @@ def verifyConfiguration(configuration):
         configuration["vllmTimeout"] = 10
     if configuration["ollamaTimeout"] <= 0:
         configuration["ollamaTimeout"] = 10
+    if configuration["geminiTimeout"] <= 0:
+        configuration["geminiTimeout"] = 30
     if not isinstance(configuration["ollamaOptions"], dict):
         configuration["ollamaOptions"] = {}
     if not isinstance(configuration["vllmOptions"], dict):
         configuration["vllmOptions"] = {}
+    if not isinstance(configuration["geminiOptions"], dict):
+        configuration["geminiOptions"] = {"temperature": 0.2}
 
     negativesAllowed = ["agentDecisionModelAgeismFactor", "agentDecisionModelRacismFactor", "agentDecisionModelSexismFactor", "agentDecisionModelTribalFactor", "agentMaxAge", "agentSelfishnessFactor"]
     negativesAllowed += ["diseaseAggressionPenalty", "diseaseFertilityPenalty", "diseaseFriendlinessPenalty", "diseaseHappinessPenalty", "diseaseMovementPenalty"]
@@ -1991,6 +2005,11 @@ if __name__ == "__main__":
                      "logfileFormat": "json",
                      "neighborhoodMode": "vonNeumann",
                      "llmBackend": "vllm",
+                     "geminiEndpoint": "https://generativelanguage.googleapis.com/v1beta",
+                     "geminiModel": "gemini-2.0-flash",
+                     "geminiApiKey": None,
+                     "geminiTimeout": 30,
+                     "geminiOptions": {"temperature": 0.2},
                      "ollamaEndpoint": "http://127.0.0.1:11434",
                      "ollamaModel": "llama3.1:8b",
                      "ollamaOptions": {},

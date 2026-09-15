@@ -10,6 +10,9 @@ class OllamaClient:
         self.timeout = timeout
         self.options = dict(options or {})
 
+    def _report_error(self, error):
+        print(f"Ollama connection/request failed ({self.endpoint}, model={self.model}): {error}")
+
     def _request(self, prompt):
         requestBody = json.dumps({
             "model": self.model,
@@ -40,7 +43,8 @@ class OllamaClient:
             if 0 <= candidate < len(candidates):
                 return candidate
         except (KeyError, TypeError, ValueError, json.JSONDecodeError,
-                urllib.error.URLError, TimeoutError):
+                urllib.error.URLError, TimeoutError) as error:
+            self._report_error(error)
             return None
         return None
 
@@ -56,5 +60,6 @@ class OllamaClient:
                 return {}
             return {str(agentID): int(candidate) for agentID, candidate in decisions.items()}
         except (KeyError, TypeError, ValueError, json.JSONDecodeError,
-                urllib.error.URLError, TimeoutError):
+                urllib.error.URLError, TimeoutError) as error:
+            self._report_error(error)
             return {}

@@ -1,48 +1,52 @@
 import json
+import os
 import urllib.error
 import urllib.request
 
 
-class VLLMClient:
-    def __init__(self, endpoint, model, timeout, options=None):
+class GeminiClient:
+    def __init__(self, endpoint, model, timeout, options=None, api_key=None):
         self.endpoint = endpoint.rstrip("/")
         self.model = model
         self.timeout = timeout
         self.options = dict(options or {})
-        if "num_predict" in self.options and "max_tokens" not in self.options:
-            self.options["max_tokens"] = self.options.pop("num_predict")
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
 
     def _report_error(self, error):
-        print(f"vLLM connection/request failed ({self.endpoint}, model={self.model}): {error}")
+        print(f"Gemini connection/request failed ({self.endpoint}, model={self.model}): {error}")
 
     def _request(self, prompt):
-        messages = [
-            {"role": "system", "content": "Return only valid JSON."},
-            {"role": "user", "content": json.dumps(prompt)}
-        ]
+        if not self.api_key:
+            raise ValueError("GEMINI_API_KEY is not set")
         requestBody = json.dumps({
-            "model": self.model,
-            "messages": messages,
-            "stream": False,
-            "response_format": {"type": "json_object"},
-            **self.options
+            "contents": [{
+                "role": "user",
+                "parts": [{"text": json.dumps(prompt)}]
+            }],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                **self.options
+            }
         }).encode("utf-8")
         request = urllib.request.Request(
-            f"{self.endpoint}/chat/completions",
+            f"{self.endpoint}/models/{self.model}:generateContent",
             data=requestBody,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": self.api_key
+            },
             method="POST"
         )
         with urllib.request.urlopen(request, timeout=self.timeout) as response:
             responseBody = json.loads(response.read().decode("utf-8"))
-        content = responseBody["choices"][0]["message"]["content"]
+        content = responseBody["candidates"][0]["content"]["parts"][0]["text"]
         return json.loads(content)
 
     def choose_cell(self, agent_state, candidates):
         prompt = {
             "agent": agent_state,
             "candidates": candidates,
-            "instruction": "Choose one candidate cell. Return only JSON in the form {\"candidate\": <integer>}."
+            "instruction": "Choose one candidate cell. Return only JSON in the form {\"candidate\": <integer>}.",
         }
         try:
             answer = self._request(prompt)
@@ -58,7 +62,7 @@ class VLLMClient:
     def choose_cells(self, faction_state):
         prompt = {
             "faction": faction_state,
-            "instruction": "Choose one candidate for every agent. Return only JSON in the form {\"decisions\": {\"<agent id>\": <candidate integer>}}."
+            "instruction": "Choose one candidate for every agent. Return only JSON in the form {\"decisions\": {\"<agent id>\": <candidate integer>}}.",
         }
         try:
             answer = self._request(prompt)
