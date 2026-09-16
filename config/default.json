@@ -139,6 +139,6 @@
         "startingAgents": 250,
         "startingDiseases": 0,
         "startingDiseasesPerAgent": [0, 0],
-        "timesteps": 200
+        "timesteps": 250
     }
 }
