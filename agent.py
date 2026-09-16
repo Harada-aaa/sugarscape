@@ -732,26 +732,43 @@ class Agent:
             factionID = self.tribe if self.tribe != None else f"agent-{self.ID}"
             factionKey = (self.timestep, str(factionID))
             if factionKey not in sugarscape.llmFactionDecisions:
-                factionAgents = [agent for agent in sugarscape.agents
-                                  if agent.isAlive() and (agent.tribe == self.tribe if self.tribe != None else agent == self)]
-                factionState = []
-                for factionAgent in factionAgents:
-                    agentCandidates = factionAgent.rankCellsInRange()
-                    factionState.append({
-                        "agent": {
-                            "id": factionAgent.ID,
-                            "age": factionAgent.age,
-                            "sugar": round(factionAgent.sugar, 2),
-                            "spice": round(factionAgent.spice, 2),
-                            "sugarMetabolism": factionAgent.findSugarMetabolism(),
-                            "spiceMetabolism": factionAgent.findSpiceMetabolism(),
-                            "happiness": round(factionAgent.happiness, 2)
-                        },
-                        "candidates": [{"candidate": index, "x": record["cell"].x, "y": record["cell"].y,
-                                        "wealth": round(record["wealth"], 2), "distance": record["range"]}
-                                       for index, record in enumerate(agentCandidates)]
-                    })
-                sugarscape.llmFactionDecisions[factionKey] = sugarscape.llmClient.choose_cells(factionState)
+                factionStates = {}
+                for factionAgent in sugarscape.agents:
+                    if not factionAgent.isAlive():
+                        continue
+                    currentFactionID = factionAgent.tribe if factionAgent.tribe != None else f"agent-{factionAgent.ID}"
+                    currentFactionKey = (self.timestep, str(currentFactionID))
+                    if currentFactionKey in factionStates:
+                        continue
+                    factionAgents = [agent for agent in sugarscape.agents
+                                     if agent.isAlive() and (agent.tribe == factionAgent.tribe if factionAgent.tribe != None else agent == factionAgent)]
+                    factionState = []
+                    for currentFactionAgent in factionAgents:
+                        agentCandidates = currentFactionAgent.rankCellsInRange()
+                        factionState.append({
+                            "agent": {
+                                "id": currentFactionAgent.ID,
+                                "age": currentFactionAgent.age,
+                                "sugar": round(currentFactionAgent.sugar, 2),
+                                "spice": round(currentFactionAgent.spice, 2),
+                                "sugarMetabolism": currentFactionAgent.findSugarMetabolism(),
+                                "spiceMetabolism": currentFactionAgent.findSpiceMetabolism(),
+                                "happiness": round(currentFactionAgent.happiness, 2)
+                            },
+                            "candidates": [{"candidate": index, "x": record["cell"].x, "y": record["cell"].y,
+                                            "wealth": round(record["wealth"], 2), "distance": record["range"]}
+                                           for index, record in enumerate(agentCandidates)]
+                        })
+                    factionStates[currentFactionKey] = factionState
+
+                if hasattr(sugarscape.llmClient, "choose_cells_parallel"):
+                    factionKeys = list(factionStates)
+                    decisions = sugarscape.llmClient.choose_cells_parallel([factionStates[key] for key in factionKeys])
+                    for key, decision in zip(factionKeys, decisions):
+                        sugarscape.llmFactionDecisions[key] = decision
+                else:
+                    for key, factionState in factionStates.items():
+                        sugarscape.llmFactionDecisions[key] = sugarscape.llmClient.choose_cells(factionState)
             selectedCandidate = sugarscape.llmFactionDecisions[factionKey].get(str(self.ID))
             if selectedCandidate is not None and 0 <= selectedCandidate < len(potentialCells):
                 bestCell = potentialCells[selectedCandidate]["cell"]

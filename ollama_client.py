@@ -1,4 +1,6 @@
 import json
+import os
+from concurrent.futures import ThreadPoolExecutor
 import urllib.error
 import urllib.request
 
@@ -9,6 +11,10 @@ class OllamaClient:
         self.model = model
         self.timeout = timeout
         self.options = dict(options or {})
+        try:
+            self.numParallel = max(1, int(os.environ.get("OLLAMA_NUM_PARALLEL", "1")))
+        except ValueError:
+            self.numParallel = 1
 
     def _report_error(self, error):
         print(f"Ollama connection/request failed ({self.endpoint}, model={self.model}): {error}")
@@ -63,3 +69,8 @@ class OllamaClient:
                 urllib.error.URLError, TimeoutError) as error:
             self._report_error(error)
             return {}
+
+    def choose_cells_parallel(self, faction_states):
+        with ThreadPoolExecutor(max_workers=self.numParallel) as executor:
+            decisions = executor.map(self.choose_cells, faction_states)
+        return list(decisions)
