@@ -20,6 +20,18 @@ import time
 import ollama_client
 import vllm_client
 
+PERSONALITY_CONFIG_KEYS = {
+    "agentAggressionFactor", "agentDecisionModel", "agentDecisionModels",
+    "agentDecisionModelAgeismFactor", "agentDecisionModelFactor",
+    "agentDecisionModelLookaheadDiscount", "agentDecisionModelLookaheadFactor",
+    "agentDecisionModelRacismFactor", "agentDecisionModelSexismFactor",
+    "agentDecisionModelTribalFactor", "agentDynamicDecisionModelFactor",
+    "agentDynamicSelfishnessFactor", "agentDynamicSocialPressureFactor",
+    "agentFertilityFactor", "agentLendingFactor", "agentLookaheadFactor",
+    "agentSelfishnessFactor", "agentTagPreferences", "agentTagging",
+    "agentTradeFactor"
+}
+
 class Sugarscape:
     def __init__(self, configuration):
         self.startTime = time.perf_counter()
@@ -493,7 +505,41 @@ class Sugarscape:
         print(f"totalExecutionTime: {time.perf_counter() - self.startTime:.2f} seconds")
         if "all" in self.debug or "sugarscape" in self.debug:
             print(str(self))
-        exit(0)
+        if self.configuration.get("tuningMode", False) == False:
+            exit(0)
+
+    def getTuningScore(self):
+        return self.runtimeStats["meanHappiness"]
+
+    def analyzeAndTune(self, configuration):
+        behavior = {
+            "score": self.getTuningScore(),
+            "population": self.runtimeStats["population"],
+            "meanHappiness": self.runtimeStats["meanHappiness"],
+            "meanWealth": self.runtimeStats["meanWealth"],
+            "meanMovement": self.runtimeStats["meanMovement"],
+            "meanValidMoves": self.runtimeStats["meanValidMoves"],
+            "meanMoveRank": self.runtimeStats["meanMoveRank"],
+            "meanTradePrice": self.runtimeStats["meanTradePrice"],
+            "tradeVolume": self.runtimeStats["tradeVolume"],
+            "agentDeaths": self.runtimeStats["agentDeaths"],
+            "agentStarvationDeaths": self.runtimeStats["agentStarvationDeaths"],
+            "agentCombatDeaths": self.runtimeStats["agentCombatDeaths"],
+            "personality": {key: configuration[key] for key in PERSONALITY_CONFIG_KEYS if key in configuration}
+        }
+        prompt = {
+            "behavior": behavior,
+            "instruction": "Analyze agent behavior and propose personality adjustments that increase the score. Return only JSON in the form {\"personalityUpdates\": {<personality config key>: <new value>}}. Only update keys listed in behavior.personality. Do not change simulation, environment, disease, resource, logging, timestep, or physical endowment settings. Preserve each value's type and shape. Make conservative changes."
+        }
+        try:
+            answer = self.llmClient._request(prompt)
+            updates = answer.get("personalityUpdates", {})
+            if not isinstance(updates, dict):
+                return {}
+            return {key: value for key, value in updates.items() if key in PERSONALITY_CONFIG_KEYS and key in configuration}
+        except Exception as error:
+            print(f"LLM tuning request failed: {error}")
+            return {}
 
     def findActiveQuadrants(self):
         quadrants = self.configuration["environmentStartingQuadrants"]
@@ -1509,7 +1555,7 @@ def parseConfiguration(configFile, configuration):
 def parseOptions(configuration):
     commandLineArgs = sys.argv[1:]
     shortOptions = "c:h:"
-    longOptions = ["conf=", "help"]
+    longOptions = ["conf=", "help", "tune", "output="]
     try:
         args, vals = getopt.getopt(commandLineArgs, shortOptions, longOptions)
     except getopt.GetoptError as err:
@@ -1525,10 +1571,14 @@ def parseOptions(configuration):
             parseConfiguration(currVal, configuration)
         elif currArg in ("-h", "--help"):
             printHelp()
+        elif currArg == "--tune":
+            configuration["tuningMode"] = True
+        elif currArg == "--output":
+            configuration["tuningOutput"] = currVal
     return configuration
 
 def printHelp():
-    print("Usage:\n\tpython sugarscape.py --conf config.json\n\nOptions:\n\t-c,--conf\tUse specified config file for simulation settings.\n\t-h,--help\tDisplay this message.")
+    print("Usage:\n\tpython tuning.py --conf config.json [--tune] [--output improved.json]\n\nOptions:\n\t-c,--conf\tUse specified config file for simulation settings.\n\t--tune\tAnalyze agent behavior with the LLM and create an improved config.\n\t--output\tPath for the improved config file.\n\t-h,--help\tDisplay this message.")
     exit(0)
 
 def sortConfigurationTimeframes(configuration, timeframe):
@@ -1900,6 +1950,55 @@ def verifyRandomSeed(configuration):
         configuration["seed"] = random.randrange(sys.maxsize)
     random.seed(configuration["seed"])
 
+def isValidPersonalityUpdate(key, value, configuration):
+    if key not in PERSONALITY_CONFIG_KEYS or key not in configuration:
+        return False
+    original = configuration[key]
+    if type(value) is not type(original):
+        return False
+    if isinstance(original, list):
+        if len(value) != len(original):
+            return False
+        return all(type(newValue) is type(oldValue) for newValue, oldValue in zip(value, original))
+    return True
+
+def writeTuningConfiguration(configuration, outputFile):
+    outputConfiguration = {key: value for key, value in configuration.items()
+                           if key not in ["tuningMode", "tuningOutput"]}
+    with open(outputFile, "w") as configFile:
+        json.dump(outputConfiguration, configFile, indent=4)
+        configFile.write("\n")
+
+def runTuning(configuration, outputFile):
+    baselineConfiguration = copy.deepcopy(configuration)
+    baselineConfiguration["headlessMode"] = True
+    baselineConfiguration["logfile"] = None
+    baselineConfiguration["agentLogfile"] = None
+    baselineConfiguration["tuningMode"] = True
+
+    baseline = Sugarscape(baselineConfiguration)
+    baseline.runSimulation(baselineConfiguration["timesteps"])
+    baselineScore = baseline.getTuningScore()
+    updates = baseline.analyzeAndTune(baselineConfiguration)
+
+    candidateConfiguration = copy.deepcopy(baselineConfiguration)
+    for key, value in updates.items():
+        if isValidPersonalityUpdate(key, value, candidateConfiguration):
+            candidateConfiguration[key] = value
+    candidateConfiguration = verifyConfiguration(candidateConfiguration)
+
+    candidate = Sugarscape(candidateConfiguration)
+    candidate.runSimulation(candidateConfiguration["timesteps"])
+    candidateScore = candidate.getTuningScore()
+    if candidateScore > baselineScore:
+        selectedConfiguration = candidateConfiguration
+        print(f"Improved score: {baselineScore} -> {candidateScore}")
+    else:
+        selectedConfiguration = baselineConfiguration
+        print(f"No score improvement: {baselineScore} -> {candidateScore}")
+    writeTuningConfiguration(selectedConfiguration, outputFile)
+    print(f"Improved config written to: {outputFile}")
+
 if __name__ == "__main__":
     # Set default values for simulation configuration
     configuration = {"agentAggressionFactor": [0, 0],
@@ -2030,12 +2129,17 @@ if __name__ == "__main__":
                      "startingDiseasesPerAgent": [0, 0],
                      "timesteps": 250
                      }
+    configuration["tuningMode"] = False
+    configuration["tuningOutput"] = "improved_config.json"
     configuration = parseOptions(configuration)
     verifyRandomSeed(configuration)
     configuration = verifyConfiguration(configuration)
     print("=== Simulation configuration ===")
     print("simulationMode: " + configuration["simulationMode"])
     print("agentDistributionMode: " + configuration["agentDistributionMode"])
+    if configuration["tuningMode"]:
+        runTuning(configuration, configuration["tuningOutput"])
+        exit(0)
     if configuration["headlessMode"] == False:
         import gui
     S = Sugarscape(configuration)
