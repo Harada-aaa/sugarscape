@@ -96,6 +96,9 @@ class Agent:
         self.lastTimeToLive = 0
         self.lastTradeTimestep = -1
         self.lastTradePartners = 0
+        self.lastTalkTimestep = -1
+        self.lastTalkPartners = 0
+        self.conversations = []
         self.lastUniversalSpiceIncomeTimestep = 0
         self.lastUniversalSugarIncomeTimestep = 0
         self.lastValidMoves = 0
@@ -155,7 +158,7 @@ class Agent:
         if agentID in self.socialNetwork:
             return
         self.socialNetwork[agentID] = {"agent": agent, "lastSeen": self.lastMovedTimestep, "timesVisited": 1, "timesReproduced": 0,
-                                         "timesTraded": 0, "timesLoaned": 0, "marginalRateOfSubstitution": 0}
+                                         "timesTraded": 0, "timesLoaned": 0, "timesTalked": 0, "marginalRateOfSubstitution": 0}
         
         if self.decisionModel == "temperance":
             # If this is a temperance agent, initialize opinion to neutral (0.5)
@@ -586,6 +589,7 @@ class Agent:
             self.doTrading()
             self.doReproduction()
             self.doLending()
+            self.doTalk()
             # End of timestep actions
             self.doDisease()
             self.doAging()
@@ -596,6 +600,101 @@ class Agent:
             self.updateHappiness()
             self.updateRuntimeStats()
             self.updateValues()
+
+    def getTalkState(self):
+        return {
+            "id": self.ID,
+            "tribe": self.tribe if self.tribe is not None else "None",
+            "age": self.age,
+            "sugar": round(self.sugar, 2),
+            "spice": round(self.spice, 2),
+            "sugarMetabolism": self.findSugarMetabolism(),
+            "spiceMetabolism": self.findSpiceMetabolism(),
+            "vision": self.vision,
+            "movement": self.movement,
+            "happiness": round(self.happiness, 2),
+            "x": self.cell.x if self.cell else None,
+            "y": self.cell.y if self.cell else None
+        }
+
+    def talk(self, neighbor):
+        if neighbor is None or neighbor == self or not neighbor.isAlive() or not self.isAlive():
+            return None
+        sugarscape = self.cell.environment.sugarscape if self.cell and self.cell.environment else None
+        if sugarscape is None or not hasattr(sugarscape, "llmClient") or sugarscape.llmClient is None:
+            return None
+        if not hasattr(sugarscape.llmClient, "talk"):
+            return None
+
+        speakerState = self.getTalkState()
+        listenerState = neighbor.getTalkState()
+        dialogue = sugarscape.llmClient.talk(speakerState, listenerState)
+        if dialogue is None:
+            return None
+
+        conversation = {
+            "timestep": self.timestep,
+            "speaker": self.ID,
+            "listener": neighbor.ID,
+            "dialogue": dialogue
+        }
+
+        self.conversations.append(conversation)
+        neighbor.conversations.append(conversation)
+        if hasattr(sugarscape, "conversations"):
+            sugarscape.conversations.append(conversation)
+
+        self.lastTalkTimestep = self.timestep
+        self.lastTalkPartners += 1
+        neighbor.lastTalkTimestep = self.timestep
+        neighbor.lastTalkPartners += 1
+
+        if neighbor.ID in self.socialNetwork and "timesTalked" in self.socialNetwork[neighbor.ID]:
+            self.socialNetwork[neighbor.ID]["timesTalked"] += 1
+        if self.ID in neighbor.socialNetwork and "timesTalked" in neighbor.socialNetwork[self.ID]:
+            neighbor.socialNetwork[self.ID]["timesTalked"] += 1
+
+        if "all" in self.debug or "agent" in self.debug or "talk" in self.debug:
+            print(f"Agent {self.ID} talked with Agent {neighbor.ID} at timestep {self.timestep}:")
+            for turn in dialogue:
+                turnSpeaker = turn.get("speaker", "?")
+                turnMessage = turn.get("message", "")
+                print(f"  Agent {turnSpeaker}: \"{turnMessage}\"")
+
+        return conversation
+
+    def doTalk(self):
+        if not self.isAlive() or self.cell is None:
+            return
+        sugarscape = self.cell.environment.sugarscape
+        if sugarscape.configuration.get("simulationMode") != "llm":
+            return
+        if sugarscape.configuration.get("agentTalk", True) is False:
+            return
+
+        livingNeighbors = [n for n in self.neighbors if n is not None and n.isAlive()]
+        if not livingNeighbors:
+            return
+
+        pairHistory = getattr(sugarscape, "timestepTalkPairs", None)
+        if pairHistory is not None:
+            availablePartners = [
+                n for n in livingNeighbors
+                if (min(self.ID, n.ID), max(self.ID, n.ID)) not in pairHistory
+            ]
+        else:
+            availablePartners = livingNeighbors[:]
+
+        if not availablePartners:
+            return
+
+        random.shuffle(availablePartners)
+        maxPartners = sugarscape.configuration.get("agentTalkMaxNeighbors", 1)
+        for partner in availablePartners[:maxPartners]:
+            if pairHistory is not None:
+                pairKey = (min(self.ID, partner.ID), max(self.ID, partner.ID))
+                pairHistory.add(pairKey)
+            self.talk(partner)
 
     def doTrading(self):
         # If not a trader, skip trading

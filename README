@@ -174,6 +174,15 @@ agentDistributionMode: string
     Select "uniform" to give all agents the same numeric ability values or "distributed" to use the configured ranges.
     Default: "uniform"
 
+agentTalk: boolean
+    Enable natural language conversations between nearby agents when simulationMode is "llm".
+    Default: true when simulationMode is "llm", false otherwise
+
+agentTalkMaxNeighbors: integer
+    Maximum number of nearby neighbors an agent can initiate a conversation with in a single timestep.
+    Default: 1
+
+
 vllmEndpoint: string
     vLLM OpenAI-compatible API base URL used by LLM mode. The client appends "/chat/completions".
     Default: "http://127.0.0.1:8000/v1"
@@ -393,7 +402,7 @@ agentVisionMode: string
 
 debugMode: [string, ...]
     Set the debug printing mode.
-    Options: "agent", "all", "cell", "disease", "environment", "ethics", "none",  "sugarscape"
+    Options: "agent", "all", "cell", "disease", "environment", "ethics", "none", "sugarscape", "talk"
     Default: "none"
     Note: Some options may cause no output in current impementation.
     Note: Can select multiple debug modes simultaneously.

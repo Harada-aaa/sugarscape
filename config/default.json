@@ -131,6 +131,8 @@
         "profileMode": false,
         "screenshots": false,
         "simulationMode": "normal",
+        "agentTalk": false,
+        "agentTalkMaxNeighbors": 1,
         "vllmEndpoint": "http://127.0.0.1:8000/v1",
         "vllmModel": "meta-llama/Llama-3.1-8B-Instruct",
         "vllmOptions": {},

@@ -80,3 +80,28 @@ class GeminiClient:
                 urllib.error.URLError, TimeoutError) as error:
             self._report_error(error)
             return {}
+
+    def talk(self, speaker_state, listener_state):
+        prompt = {
+            "speaker": speaker_state,
+            "listener": listener_state,
+            "instruction": "Generate a short natural language conversation (1-2 sentences each) between these two nearby agents in Sugarscape. Return only JSON in the form {\"dialogue\": [{\"speaker\": <id>, \"message\": \"<sentence>\"}]}."
+        }
+        try:
+            answer = self._request(prompt)
+            if not isinstance(answer, dict):
+                return None
+            dialogue = answer.get("dialogue") or answer.get("conversation") or answer.get("messages")
+            if isinstance(dialogue, list):
+                return dialogue
+            if "speaker_message" in answer and "listener_message" in answer:
+                return [
+                    {"speaker": speaker_state.get("id"), "message": str(answer["speaker_message"])},
+                    {"speaker": listener_state.get("id"), "message": str(answer["listener_message"])}
+                ]
+            return None
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError,
+                urllib.error.URLError, TimeoutError) as error:
+            self._report_error(error)
+            return None
+

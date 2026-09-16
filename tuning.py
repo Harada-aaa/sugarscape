@@ -1641,6 +1641,14 @@ def verifyConfiguration(configuration):
         configuration["vllmOptions"] = {}
     if not isinstance(configuration["geminiOptions"], dict):
         configuration["geminiOptions"] = {"temperature": 0.2}
+    if "agentTalk" not in configuration:
+        configuration["agentTalk"] = True if configuration["simulationMode"] == "llm" else False
+    if not isinstance(configuration["agentTalk"], bool):
+        configuration["agentTalk"] = True if configuration["simulationMode"] == "llm" else False
+    configuration.setdefault("agentTalkMaxNeighbors", 1)
+    if configuration["agentTalkMaxNeighbors"] <= 0:
+        configuration["agentTalkMaxNeighbors"] = 1
+
 
     negativesAllowed = ["agentDecisionModelAgeismFactor", "agentDecisionModelRacismFactor", "agentDecisionModelSexismFactor", "agentDecisionModelTribalFactor", "agentMaxAge", "agentSelfishnessFactor"]
     negativesAllowed += ["diseaseAggressionPenalty", "diseaseFertilityPenalty", "diseaseFriendlinessPenalty", "diseaseHappinessPenalty", "diseaseMovementPenalty"]
@@ -1906,7 +1914,7 @@ def verifyConfiguration(configuration):
     if configuration["agentLogfile"] == "":
         configuration["agentLogfile"] = None
 
-    recognizedDebugModes = ["agent", "all", "cell", "disease", "environment", "ethics", "none", "sugarscape"]
+    recognizedDebugModes = ["agent", "all", "cell", "disease", "environment", "ethics", "none", "sugarscape", "talk"]
     validModes = True
     for mode in configuration["debugMode"]:
         if mode not in recognizedDebugModes:
@@ -2123,6 +2131,8 @@ if __name__ == "__main__":
                      "profileMode": False,
                      "screenshots": False,
                      "simulationMode": "normal",
+                     "agentTalk": False,
+                     "agentTalkMaxNeighbors": 1,
                      "seed": -1,
                      "startingAgents": 250,
                      "startingDiseases": 0,
