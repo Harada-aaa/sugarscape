@@ -1648,6 +1648,10 @@ def verifyConfiguration(configuration):
     configuration.setdefault("agentTalkMaxNeighbors", 1)
     if configuration["agentTalkMaxNeighbors"] <= 0:
         configuration["agentTalkMaxNeighbors"] = 1
+    configuration.setdefault("resumeFromLog", True)
+    if not isinstance(configuration["resumeFromLog"], bool):
+        configuration["resumeFromLog"] = True
+
 
 
     negativesAllowed = ["agentDecisionModelAgeismFactor", "agentDecisionModelRacismFactor", "agentDecisionModelSexismFactor", "agentDecisionModelTribalFactor", "agentMaxAge", "agentSelfishnessFactor"]
@@ -2133,6 +2137,7 @@ if __name__ == "__main__":
                      "simulationMode": "normal",
                      "agentTalk": False,
                      "agentTalkMaxNeighbors": 1,
+                     "resumeFromLog": True,
                      "seed": -1,
                      "startingAgents": 250,
                      "startingDiseases": 0,

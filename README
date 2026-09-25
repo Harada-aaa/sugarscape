@@ -652,6 +652,20 @@ logfileFormat: string
     Options: "csv", "json"
     Default: "json"
 
+agentLogfile: path
+    Set the path of the agent log file.
+    Default: null
+
+agentLogfileFormat: string
+    Set the file format for the agent log file.
+    Options: "csv", "json"
+    Default: "json"
+
+resumeFromLog: bool
+    Set whether to automatically resume simulation from existing logfile / agentLogfile.
+    When enabled and existing log files are found, the simulation replays deterministically up to the recorded timestep in normal mode before continuing with the configured simulation mode (e.g. LLM mode) and appends directly to the existing log files.
+    Default: true
+
 neighborhoodMode: string
     Set the type of neighborhood adjacency used by agents and environment cells.
     Options: "moore", "vonNeumann"
