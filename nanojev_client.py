@@ -54,6 +54,18 @@ class NanoJevClient:
         if not response:
             return None
 
+        states = response.get("states") if isinstance(response, dict) else None
+        if isinstance(states, list):
+            for state in states:
+                if not isinstance(state, dict) or str(state.get("id", "")) != agent_id:
+                    continue
+                answers = state.get("answers")
+                answer = answers.get(question_name) if isinstance(answers, dict) else None
+                if isinstance(answer, dict):
+                    choice = answer.get("choice", answer.get("value"))
+                    if choice is not None:
+                        return int(choice)
+
         # 1. Look for results array: [{"id": "0", "predictions": {"move": {"prediction": "0"}}}, ...]
         results = response.get("results") if isinstance(response, dict) else (response if isinstance(response, list) else None)
         if isinstance(results, list):
@@ -102,14 +114,8 @@ class NanoJevClient:
         return None
 
     def _request(self, payload):
-        request_data = {
-            "states": payload.get("states", []),
-            "model": self.model,
-            **self.options
-        }
-        for k, v in payload.items():
-            if k != "states":
-                request_data[k] = v
+        # NanoJev's /api/evaluate endpoint accepts exactly the states field.
+        request_data = {"states": payload.get("states", [])}
 
         request_body = json.dumps(request_data).encode("utf-8")
 
@@ -141,11 +147,18 @@ class NanoJevClient:
                 )
                 with urllib.request.urlopen(fb_req, timeout=self.timeout) as fb_resp:
                     return json.loads(fb_resp.read().decode("utf-8"))
+            error_body = error.read().decode("utf-8", "replace").strip()
+            if error_body:
+                raise urllib.error.HTTPError(
+                    error.url, error.code, f"{error.reason}: {error_body}", error.headers, error.fp
+                ) from error
             raise
 
     def choose_cell(self, agent_state, candidates):
         if not candidates:
             return None
+        if len(candidates) == 1:
+            return 0
         state = self._format_agent_state(agent_state, candidates)
         try:
             response = self._request({"states": [state]})
@@ -163,16 +176,22 @@ class NanoJevClient:
             return {}
         states = []
         agent_candidates_len = {}
+        decisions = {}
         for record in faction_state:
             agent = record["agent"]
             cands = record["candidates"]
             agent_id = str(agent["id"])
             agent_candidates_len[agent_id] = len(cands)
-            states.append(self._format_agent_state(agent, cands))
+            if len(cands) == 1:
+                decisions[agent_id] = 0
+            elif len(cands) > 1:
+                states.append(self._format_agent_state(agent, cands))
+
+        if not states:
+            return decisions
 
         try:
             response = self._request({"states": states})
-            decisions = {}
             for record in faction_state:
                 agent_id = str(record["agent"]["id"])
                 cand_len = agent_candidates_len.get(agent_id, 0)

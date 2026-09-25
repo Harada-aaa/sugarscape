@@ -97,7 +97,7 @@
         "environmentSpicePeaks": [[35, 35, 4], [15, 15, 4]],
         "environmentSpiceProductionPollutionFactor": 0,
         "environmentSpiceRegrowRate": 0,
-        "environmentStartingQuadrants": [1, 2, 3, 4],
+        "environmentStartingQuadrants": [1, 3],
         "environmentSugarConsumptionPollutionFactor": 0,
         "environmentSugarPeaks": [[35, 15, 4], [15, 35, 4]],
         "environmentSugarProductionPollutionFactor": 0,
