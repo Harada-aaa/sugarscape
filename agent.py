@@ -667,7 +667,7 @@ class Agent:
         if not self.isAlive() or self.cell is None:
             return
         sugarscape = self.cell.environment.sugarscape
-        if sugarscape.configuration.get("simulationMode") != "llm":
+        if sugarscape.configuration.get("simulationMode") not in ["llm", "nanojev"]:
             return
         if sugarscape.configuration.get("agentTalk", True) is False:
             return
@@ -827,7 +827,7 @@ class Agent:
         greedyBestCell = potentialCells[0]["cell"]
 
         sugarscape = self.cell.environment.sugarscape
-        if sugarscape.configuration["simulationMode"] == "llm":
+        if sugarscape.configuration["simulationMode"] in ["llm", "nanojev"]:
             factionID = self.tribe if self.tribe != None else f"agent-{self.ID}"
             factionKey = (self.timestep, str(factionID))
             if factionKey not in sugarscape.llmFactionDecisions:
