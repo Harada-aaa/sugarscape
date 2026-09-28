@@ -25,31 +25,26 @@ INDICATOR_GROUPS = (
 		(
 			("meanHappiness", "Mean happiness", "#1b9e77"),
 			("meanWealthHappiness", "Wealth happiness", "#7570b3"),
-			("meanHealthHappiness", "Health happiness", "#e7298a"),
-			("meanSocialHappiness", "Social happiness", "#66a61e"),
-			("meanFamilyHappiness", "Family happiness", "#e6ab02"),
-			("meanConflictHappiness", "Conflict happiness", "#a6761d"),
 		),
 	),
 	(
 		"Equality and wealth",
 		(
-			("giniCoefficient", "Gini coefficient", "#d95f02"),
 			("meanWealth", "Mean wealth", "#1b9e77"),
-			("agentWealthTotal", "Total agent wealth", "#7570b3"),
 			("maxWealth", "Maximum wealth", "#e7298a"),
 			("minWealth", "Minimum wealth", "#66a61e"),
 		),
 	),
 	(
-		"Population and social conditions",
+        "Gini Coefficient",
+        (
+            ("giniCoefficient", "Gini coefficient", "#d95f02"),
+        ),
+    ),
+	(
+		"Population",
 		(
 			("population", "Population", "#1b9e77"),
-			("agentsBorn", "Agents born", "#7570b3"),
-			("agentDeaths", "Agent deaths", "#d95f02"),
-			("sickAgentsPercentage", "Sick agents (%)", "#e7298a"),
-			("meanNeighbors", "Mean neighbors", "#66a61e"),
-			("loanVolume", "Loan volume", "#e6ab02"),
 		),
 	),
 )
