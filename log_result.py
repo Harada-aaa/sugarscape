@@ -48,7 +48,34 @@ INDICATOR_GROUPS = (
 		),
 	),
 )
-
+COMPARED_GROUPS = (
+	"totalHappiness",
+	"meanHappiness",
+    "meanWealthHappiness",
+    "meanWealth",
+    "giniCoefficient",
+    "population",
+)
+LOG_RESULT_GROUPS = (
+	(
+        "Two Results",
+        (
+            ("two_normal", "normal", "#d95f02"),
+            ("two_llm", "llm", "#1b9e77"),
+            ("two_talk", "talk", "#7570b3"),
+            ("two_nanojev", "nanojev", "#e7298a"),
+        ),
+    ),
+    (
+        "Four Results",
+        (
+            ("four_normal", "normal", "#d95f02"),
+            ("four_llm", "llm", "#1b9e77"),
+            ("four_talk", "talk", "#7570b3"),
+            ("four_nanojev", "nanojev", "#e7298a"),
+        ),
+    ),
+)
 
 def load_records(path: Path) -> list[dict]:
 	"""Load a log containing a JSON list of timestep records."""
@@ -74,37 +101,64 @@ def numeric_series(records: list[dict], key: str) -> tuple[list[float], list[flo
 	return [point[0] for point in points], [point[1] for point in points]
 
 
-def plot_log(path: Path, output_dir: Path) -> Path:
-	records = load_records(path)
-	if not records:
+def indicator_label(key: str) -> str:
+	for _, indicators in INDICATOR_GROUPS:
+		for indicator_key, label, _ in indicators:
+			if indicator_key == key:
+				return label
+	return key
+
+
+def plot_result_group(
+	input_dir: Path,
+	result_name: str,
+	log_specs: tuple[tuple[str, str, str], ...],
+	output_dir: Path,
+) -> Path:
+	logs = []
+	for file_stem, label, color in log_specs:
+		path = input_dir / f"{file_stem}.json"
+		if path.is_file():
+			logs.append((path, label, color, load_records(path)))
+	if not logs or not any(records for _, _, _, records in logs):
 		raise ValueError("no timestep records found")
 
-	figure, axes = plt.subplots(len(INDICATOR_GROUPS), 1, figsize=(14, 19), sharex=True)
-	figure.suptitle(f"Sugarscape social indicators: {path.stem}", fontsize=18, fontweight="bold")
+	figure, axes = plt.subplots(len(COMPARED_GROUPS), 1, figsize=(14, 22), sharex=True)
+	figure.suptitle(f"Sugarscape social indicators: {result_name}", fontsize=18, fontweight="bold")
 
-	for axis, (group_name, indicators) in zip(axes, INDICATOR_GROUPS):
+	for axis, key in zip(axes, COMPARED_GROUPS):
 		plotted = 0
-		for key, label, color in indicators:
+		for _, label, color, records in logs:
 			x_values, y_values = numeric_series(records, key)
 			if not x_values:
 				continue
 			axis.plot(x_values, y_values, label=label, color=color, linewidth=2)
 			plotted += 1
-		axis.set_title(group_name, loc="left", fontweight="bold")
+		axis.set_title(indicator_label(key), loc="left", fontweight="bold")
 		axis.set_ylabel("Value")
 		axis.grid(True, alpha=0.25)
 		if plotted:
-			axis.legend(loc="upper left", ncol=3, frameon=False, fontsize=9)
+			axis.legend(loc="upper left", ncol=4, frameon=False, fontsize=9)
 		else:
 			axis.text(0.5, 0.5, "No matching indicators", ha="center", va="center", transform=axis.transAxes)
 
 	axes[-1].set_xlabel("Timestep")
 	figure.tight_layout(rect=(0, 0, 1, 0.97))
 	output_dir.mkdir(parents=True, exist_ok=True)
-	output_path = output_dir / f"{path.stem}_social_indicators.png"
+	output_path = output_dir / result_name
 	figure.savefig(output_path, dpi=160, bbox_inches="tight")
 	plt.close(figure)
 	return output_path
+
+
+def plot_log(path: Path, output_dir: Path) -> Path:
+	"""Create the original single-log output for an explicitly supplied file."""
+	return plot_result_group(
+		path.parent,
+		f"{path.stem}_social_indicators.png",
+		((path.stem, path.stem, "#d95f02"),),
+		output_dir,
+	)
 
 
 def parse_args() -> argparse.Namespace:
@@ -126,6 +180,17 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
 	args = parse_args()
+	if args.input == Path("logs"):
+		for result_name, log_specs in LOG_RESULT_GROUPS:
+			output_name = result_name.lower().replace(" results", "_result") + ".png"
+			try:
+				output_path = plot_result_group(args.input, output_name, log_specs, args.output)
+			except (OSError, ValueError, json.JSONDecodeError) as error:
+				print(f"Skipping {result_name}: {error}")
+				continue
+			print(f"Saved {output_path}")
+		return
+
 	input_paths = [args.input] if args.input.is_file() else sorted(args.input.glob("*.json"))
 	if not input_paths:
 		raise SystemExit(f"No JSON logs found in {args.input}")
