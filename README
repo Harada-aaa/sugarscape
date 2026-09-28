@@ -14,6 +14,14 @@ TkInter
 Usage:
 python sugarscape.py
 
+Social indicator plots:
+python3 log_result.py
+    Read all JSON logs in logs/ and save PNG charts in assets/.
+    Each chart includes total and component happiness, inequality and wealth,
+    population, health, social connections, and lending indicators.
+python3 log_result.py --input logs/default.json --output assets
+    Plot one selected log file.
+
 Makefile Options:
 make clean
     Clean up working files and logs created by the software.
