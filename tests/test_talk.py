@@ -6,6 +6,7 @@ import urllib.error
 import vllm_client
 import ollama_client
 import gemini_client
+import jev_client
 import sugarscape
 import agent
 import cell
@@ -13,6 +14,34 @@ import environment
 
 
 class TestLLMClientsTalk(unittest.TestCase):
+    def test_jev_client_choice_request(self):
+        client = jev_client.JevClient(
+            "https://api.typesafe.ai/v1/systemone", "jev-latest", 10, api_key="test-key"
+        )
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "model": "jev-1.13.0",
+            "answers": {
+                "move": {
+                    "type": "choice",
+                    "choice": "1",
+                    "confidence": 0.9,
+                }
+            },
+            "usage": {"input_tokens": 1, "output_tokens": 1},
+        }).encode()
+        mock_response.__enter__.return_value = mock_response
+
+        with patch.object(jev_client.urllib.request, "urlopen", return_value=mock_response) as urlopen:
+            result = client.choose_cell({"id": 0}, [{"x": 1}, {"x": 2}])
+
+        self.assertEqual(result, 1)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_header("Authorization"), "Bearer test-key")
+        body = json.loads(request.data.decode())
+        self.assertEqual(body["model"], "jev-latest")
+        self.assertEqual(set(body), {"state", "model", "questions"})
+
     def test_vllm_client_talk_success(self):
         client = vllm_client.VLLMClient("http://127.0.0.1:8000/v1", "test-model", 10)
         mock_response = {

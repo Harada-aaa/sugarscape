@@ -135,12 +135,28 @@ The simulation provides a default set of options in a dictionary in the sugarsca
 A JSON configuration file can be passed to the simulation, overwriting the default configuration, with the --conf option.
 
 simulationMode: string
-    Select "normal" for the built-in Sugarscape decision process or "llm" to ask vLLM to select destination cells. In LLM mode, one request is made per tribe and the response contains a decision for every living agent in that tribe. If tagging is disabled and an agent has no tribe, that agent uses its own request.
+    Select "normal" for the built-in Sugarscape decision process, "llm" for text-based LLM clients, or "jev" for Jev/NanoJev structured decision clients. In LLM and Jev modes, one request is made per tribe and the response contains a decision for every living agent in that tribe. If tagging is disabled and an agent has no tribe, that agent uses its own request.
     Default: "normal"
 
 llmBackend: string
-    Select the LLM server used when simulationMode is "llm": "vllm", "ollama", or "gemini".
+    Select the client used when simulationMode is "llm" or "jev": "vllm", "ollama", "gemini", "jev", or "nanojev".
     Default: "vllm"
+
+jevEndpoint: string
+    TypeSafe System One API endpoint used when llmBackend is "jev".
+    Default: "https://api.typesafe.ai/v1/systemone"
+
+jevModel: string
+    TypeSafe model used when llmBackend is "jev".
+    Default: "jev-latest"
+
+jevApiKey: string|null
+    Optional TypeSafe API key. If null, the TYPESAFE_API_KEY environment variable is used.
+    Default: null
+
+jevTimeout: integer
+    TypeSafe request timeout in seconds.
+    Default: 10
 
 geminiEndpoint: string
     Google Gemini API base URL used when llmBackend is "gemini".

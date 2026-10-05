@@ -61,8 +61,8 @@ LOG_RESULT_GROUPS = (
         "Two Results",
         (
             ("two_normal", "normal", "#d95f02"),
-            ("two_llm", "llm", "#1b9e77"),
-            ("two_talk", "talk", "#7570b3"),
+            ("two_llama", "llama", "#1b9e77"),
+            ("two_llama_talk", "llama(talk)", "#7570b3"),
             ("two_nanojev", "nanojev", "#e7298a"),
         ),
     ),
@@ -70,11 +70,43 @@ LOG_RESULT_GROUPS = (
         "Four Results",
         (
             ("four_normal", "normal", "#d95f02"),
-            ("four_llm", "llm", "#1b9e77"),
-            ("four_talk", "talk", "#7570b3"),
+            ("four_llama", "llama", "#1b9e77"),
+            ("four_llama_talk", "llama(talk)", "#7570b3"),
             ("four_nanojev", "nanojev", "#e7298a"),
         ),
     ),
+    (
+		"Two LLM Results",
+		(
+			("two_llama", "llama", "#d95f02"),
+			("two_gemma", "gemma", "#1b9e77"),
+			("two_nanojev", "nanojev", "#7570b3"),
+		),
+	),
+	(
+		"Two LLM(talk) Results",
+		(
+			("two_llama_talk", "llama(talk)", "#d95f02"),
+			("two_gemma_talk", "gemma(talk)", "#1b9e77"),
+			("two_nanojev_talk", "nanojev(talk)", "#7570b3"),
+		),
+	),
+	(
+		"Four LLM Results",
+		(
+			("four_llama", "llama", "#d95f02"),
+			("four_gemma", "gemma", "#1b9e77"),
+			("four_nanojev", "nanojev", "#7570b3"),
+		),
+	),
+	(
+		"Four LLM(talk) Results",
+		(
+			("four_llama_talk", "llama(talk)", "#d95f02"),
+			("four_gemma_talk", "gemma(talk)", "#1b9e77"),
+			("four_nanojev_talk", "nanojev(talk)", "#7570b3"),
+		),
+	),
 )
 
 def load_records(path: Path) -> list[dict]:

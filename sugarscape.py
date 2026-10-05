@@ -19,6 +19,7 @@ import sys
 import time
 
 import nanojev_client
+import jev_client
 import ollama_client
 import vllm_client
 
@@ -135,6 +136,10 @@ class Sugarscape:
             self.llmClient = nanojev_client.NanoJevClient(
                 configuration["nanojevEndpoint"], configuration["nanojevModel"], configuration["nanojevTimeout"],
                 configuration["nanojevOptions"])
+        elif configuration["llmBackend"] == "jev":
+            self.llmClient = jev_client.JevClient(
+                configuration["jevEndpoint"], configuration["jevModel"], configuration["jevTimeout"],
+                configuration["jevOptions"], configuration["jevApiKey"])
         else:
             self.llmClient = vllm_client.VLLMClient(
                 configuration["vllmEndpoint"], configuration["vllmModel"], configuration["vllmTimeout"],
@@ -1740,9 +1745,13 @@ def sortConfigurationTimeframes(configuration, timeframe):
 def verifyConfiguration(configuration):
     configuration.setdefault("simulationMode", "normal")
     configuration.setdefault("agentDistributionMode", "uniform")
-    configuration.setdefault("llmBackend", "vllm")
-    if configuration["simulationMode"] == "nanojev":
-        configuration.setdefault("llmBackend", "nanojev")
+    if "llmBackend" not in configuration:
+        configuration["llmBackend"] = "jev" if configuration["simulationMode"] == "jev" else "vllm"
+    configuration.setdefault("jevEndpoint", "https://api.typesafe.ai/v1/systemone")
+    configuration.setdefault("jevModel", "jev-latest")
+    configuration.setdefault("jevTimeout", 10)
+    configuration.setdefault("jevOptions", {})
+    configuration.setdefault("jevApiKey", None)
     configuration.setdefault("geminiEndpoint", "https://generativelanguage.googleapis.com/v1beta")
     configuration.setdefault("geminiModel", "gemini-3.6-flash")
     configuration.setdefault("geminiApiKey", None)
@@ -1760,9 +1769,9 @@ def verifyConfiguration(configuration):
     configuration.setdefault("vllmModel", "meta-llama/Llama-3.1-8B-Instruct")
     configuration.setdefault("vllmTimeout", 10)
     configuration.setdefault("vllmOptions", {})
-    if configuration["simulationMode"] not in ["normal", "llm", "nanojev"]:
+    if configuration["simulationMode"] not in ["normal", "llm", "jev"]:
         configuration["simulationMode"] = "normal"
-    if configuration["llmBackend"] not in ["vllm", "ollama", "gemini", "nanojev"]:
+    if configuration["llmBackend"] not in ["vllm", "ollama", "gemini", "jev", "nanojev"]:
         configuration["llmBackend"] = "vllm"
     if configuration["agentDistributionMode"] not in ["uniform", "distributed"]:
         configuration["agentDistributionMode"] = "uniform"
@@ -1774,6 +1783,8 @@ def verifyConfiguration(configuration):
         configuration["geminiTimeout"] = 30
     if configuration["nanojevTimeout"] <= 0:
         configuration["nanojevTimeout"] = 10
+    if configuration["jevTimeout"] <= 0:
+        configuration["jevTimeout"] = 10
     if not isinstance(configuration["ollamaOptions"], dict):
         configuration["ollamaOptions"] = {}
     if not isinstance(configuration["vllmOptions"], dict):
@@ -1782,10 +1793,12 @@ def verifyConfiguration(configuration):
         configuration["geminiOptions"] = {"temperature": 0.2}
     if not isinstance(configuration["nanojevOptions"], dict):
         configuration["nanojevOptions"] = {}
+    if not isinstance(configuration["jevOptions"], dict):
+        configuration["jevOptions"] = {}
     if "agentTalk" not in configuration:
-        configuration["agentTalk"] = True if configuration["simulationMode"] in ["llm", "nanojev"] else False
+        configuration["agentTalk"] = True if configuration["simulationMode"] in ["llm", "jev"] else False
     if not isinstance(configuration["agentTalk"], bool):
-        configuration["agentTalk"] = True if configuration["simulationMode"] in ["llm", "nanojev"] else False
+        configuration["agentTalk"] = True if configuration["simulationMode"] in ["llm", "jev"] else False
     configuration.setdefault("agentTalkMaxNeighbors", 1)
     if configuration["agentTalkMaxNeighbors"] <= 0:
         configuration["agentTalkMaxNeighbors"] = 1
