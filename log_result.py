@@ -80,7 +80,6 @@ LOG_RESULT_GROUPS = (
 		(
 			("two_llama", "llama", "#d95f02"),
 			("two_gemma", "gemma", "#1b9e77"),
-			("two_nanojev", "nanojev", "#7570b3"),
 		),
 	),
 	(
@@ -88,7 +87,6 @@ LOG_RESULT_GROUPS = (
 		(
 			("two_llama_talk", "llama(talk)", "#d95f02"),
 			("two_gemma_talk", "gemma(talk)", "#1b9e77"),
-			("two_nanojev_talk", "nanojev(talk)", "#7570b3"),
 		),
 	),
 	(
@@ -96,7 +94,6 @@ LOG_RESULT_GROUPS = (
 		(
 			("four_llama", "llama", "#d95f02"),
 			("four_gemma", "gemma", "#1b9e77"),
-			("four_nanojev", "nanojev", "#7570b3"),
 		),
 	),
 	(
@@ -104,9 +101,37 @@ LOG_RESULT_GROUPS = (
 		(
 			("four_llama_talk", "llama(talk)", "#d95f02"),
 			("four_gemma_talk", "gemma(talk)", "#1b9e77"),
-			("four_nanojev_talk", "nanojev(talk)", "#7570b3"),
 		),
 	),
+	(
+		"Two Jev Results",
+		(
+			("two_jev", "jev", "#d95f02"),
+			("two_nanojev", "nanojev", "#1b9e77"),
+		),
+	),
+	(
+		"Two Jev(talk) Results",
+		(
+			("two_jev_talk", "jev(talk)", "#d95f02"),
+			("two_nanojev_talk", "nanojev(talk)", "#1b9e77"),
+		),
+	),
+	(
+		"Four Jev Results",
+		(
+			("four_jev", "jev", "#d95f02"),
+			("four_nanojev", "nanojev", "#1b9e77"),
+		),
+	),
+	(
+		"Four Jev(talk) Results",
+		(
+			("four_jev_talk", "jev(talk)", "#d95f02"),
+			("four_nanojev_talk", "nanojev(talk)", "#1b9e77"),
+		),
+	),
+
 )
 
 def load_records(path: Path) -> list[dict]:
