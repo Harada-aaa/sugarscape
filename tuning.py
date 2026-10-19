@@ -6,6 +6,7 @@ import condition
 import environment
 import ethics
 import gemini_client
+import kev_client
 
 import copy
 import getopt
@@ -56,6 +57,10 @@ class Sugarscape:
             self.llmClient = jev_client.JevClient(
                 configuration["jevEndpoint"], configuration["jevModel"], configuration["jevTimeout"],
                 configuration["jevOptions"], configuration["jevApiKey"])
+        elif configuration["llmBackend"] == "kev":
+            self.llmClient = kev_client.KevClient(
+                configuration["kevEndpoint"], configuration["kevModel"], configuration["kevTimeout"],
+                configuration["kevOptions"], configuration["kevApiKey"])
         else:
             self.llmClient = vllm_client.VLLMClient(
                 configuration["vllmEndpoint"], configuration["vllmModel"], configuration["vllmTimeout"],
@@ -1631,6 +1636,11 @@ def verifyConfiguration(configuration):
     configuration.setdefault("jevTimeout", 10)
     configuration.setdefault("jevOptions", {})
     configuration.setdefault("jevApiKey", None)
+    configuration.setdefault("kevEndpoint", "http://127.0.0.1:8009/v1/systemone")
+    configuration.setdefault("kevModel", "kev-latest")
+    configuration.setdefault("kevTimeout", 10)
+    configuration.setdefault("kevOptions", {})
+    configuration.setdefault("kevApiKey", None)
     configuration.setdefault("nanojevEndpoint", "http://127.0.0.1:8765")
     configuration.setdefault("nanojevModel", "NanoJev")
     configuration.setdefault("nanojevTimeout", 10)
@@ -1645,7 +1655,7 @@ def verifyConfiguration(configuration):
     configuration.setdefault("vllmOptions", {})
     if configuration["simulationMode"] not in ["normal", "llm", "jev"]:
         configuration["simulationMode"] = "normal"
-    if configuration["llmBackend"] not in ["vllm", "ollama", "gemini", "jev", "nanojev"]:
+    if configuration["llmBackend"] not in ["vllm", "ollama", "gemini", "jev", "kev", "nanojev"]:
         configuration["llmBackend"] = "vllm"
     if configuration["agentDistributionMode"] not in ["uniform", "distributed"]:
         configuration["agentDistributionMode"] = "uniform"
@@ -1655,12 +1665,16 @@ def verifyConfiguration(configuration):
         configuration["ollamaTimeout"] = 10
     if configuration["geminiTimeout"] <= 0:
         configuration["geminiTimeout"] = 30
+    if configuration["kevTimeout"] <= 0:
+        configuration["kevTimeout"] = 10
     if not isinstance(configuration["ollamaOptions"], dict):
         configuration["ollamaOptions"] = {}
     if not isinstance(configuration["vllmOptions"], dict):
         configuration["vllmOptions"] = {}
     if not isinstance(configuration["geminiOptions"], dict):
         configuration["geminiOptions"] = {"temperature": 0.2}
+    if not isinstance(configuration["kevOptions"], dict):
+        configuration["kevOptions"] = {}
     if "agentTalk" not in configuration:
         configuration["agentTalk"] = True if configuration["simulationMode"] in ["llm", "jev"] else False
     if not isinstance(configuration["agentTalk"], bool):

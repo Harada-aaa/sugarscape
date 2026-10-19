@@ -1,12 +1,14 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import json
+import os
 import urllib.error
 
 import vllm_client
 import ollama_client
 import gemini_client
 import jev_client
+import kev_client
 import sugarscape
 import agent
 import cell
@@ -14,6 +16,24 @@ import environment
 
 
 class TestLLMClientsTalk(unittest.TestCase):
+    def test_kev_client_choice_request_without_api_key(self):
+        with patch.dict(os.environ, {"KEV_API_KEY": ""}):
+            client = kev_client.KevClient("http://127.0.0.1:8009/v1/systemone", "kev-latest", 10)
+            mock_response = MagicMock()
+            mock_response.read.return_value = json.dumps({
+                "answers": {"move": {"choice": "1"}}
+            }).encode()
+            mock_response.__enter__.return_value = mock_response
+
+            with patch.object(kev_client.urllib.request, "urlopen", return_value=mock_response) as urlopen:
+                result = client.choose_cell({"id": 0}, [{"x": 1}, {"x": 2}])
+
+        self.assertEqual(result, 1)
+        request = urlopen.call_args.args[0]
+        self.assertIsNone(request.get_header("Authorization"))
+        body = json.loads(request.data.decode())
+        self.assertEqual(body["model"], "kev-latest")
+
     def test_jev_client_choice_request(self):
         client = jev_client.JevClient(
             "https://api.typesafe.ai/v1/systemone", "jev-latest", 10, api_key="test-key"

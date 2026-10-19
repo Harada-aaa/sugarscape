@@ -139,7 +139,7 @@ simulationMode: string
     Default: "normal"
 
 llmBackend: string
-    Select the client used when simulationMode is "llm" or "jev": "vllm", "ollama", "gemini", "jev", or "nanojev".
+    Select the client used when simulationMode is "llm" or "jev": "vllm", "ollama", "gemini", "jev", "kev", or "nanojev".
     Default: "vllm"
 
 jevEndpoint: string
@@ -156,6 +156,22 @@ jevApiKey: string|null
 
 jevTimeout: integer
     TypeSafe request timeout in seconds.
+    Default: 10
+
+kevEndpoint: string
+    Kev System One API endpoint used when llmBackend is "kev". Kev's local server defaults to "http://127.0.0.1:8009/v1/systemone".
+    Default: "http://127.0.0.1:8009/v1/systemone"
+
+kevModel: string
+    Kev model used when llmBackend is "kev".
+    Default: "kev-latest"
+
+kevApiKey: string|null
+    Optional Kev API key. If null, the KEV_API_KEY environment variable is used.
+    Default: null
+
+kevTimeout: integer
+    Kev request timeout in seconds.
     Default: 10
 
 geminiEndpoint: string
