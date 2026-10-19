@@ -61,9 +61,9 @@ LOG_RESULT_GROUPS = (
         "Two Results",
         (
             ("two_normal", "normal", "#d95f02"),
-            ("two_llama", "llama", "#1b9e77"),
-            ("two_llama_talk", "llama(talk)", "#7570b3"),
-            ("two_nanojev", "nanojev", "#e7298a"),
+            ("two_gemma4", "gemma4", "#1b9e77"),
+            ("two_gemma4_talk", "gemma4(talk)", "#7570b3"),
+            ("two_jev", "jev", "#e7298a"),
         ),
     ),
     (
@@ -90,7 +90,7 @@ LOG_RESULT_GROUPS = (
 			("two_llama_talk", "llama(talk)", "#d95f02"),
 			("two_gemma3_talk", "gemma3(talk)", "#1b9e77"),
 			("two_gemma4_talk", "gemma4(talk)", "#7570b3"),
-			("two_qwen_talk", "qwen(talk)", "#e7298a"),
+			#("two_qwen_talk", "qwen(talk)", "#e7298a"),
 		),
 	),
 	(

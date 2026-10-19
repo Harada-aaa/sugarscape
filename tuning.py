@@ -5,8 +5,8 @@ import cell
 import condition
 import environment
 import ethics
-import gemini_client
-import kev_client
+from clients import gemini_client
+from clients import kev_client
 
 import copy
 import getopt
@@ -18,10 +18,10 @@ import re
 import sys
 import time
 
-import ollama_client
-import jev_client
-import nanojev_client
-import vllm_client
+from clients import ollama_client
+from clients import jev_client
+from clients import nanojev_client
+from clients import vllm_client
 
 PERSONALITY_CONFIG_KEYS = {
     "agentAggressionFactor", "agentDecisionModel", "agentDecisionModels",

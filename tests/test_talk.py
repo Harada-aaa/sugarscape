@@ -4,11 +4,11 @@ import json
 import os
 import urllib.error
 
-import vllm_client
-import ollama_client
-import gemini_client
-import jev_client
-import kev_client
+from clients import vllm_client
+from clients import ollama_client
+from clients import gemini_client
+from clients import jev_client
+from clients import kev_client
 import sugarscape
 import agent
 import cell

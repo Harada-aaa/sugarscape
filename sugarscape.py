@@ -5,11 +5,10 @@ import cell
 import condition
 import environment
 import ethics
-import gemini_client
-import kev_client
+from clients import gemini_client
+from clients import kev_client
 
 import copy
-import getopt
 import hashlib
 import json
 import math
@@ -19,105 +18,12 @@ import re
 import sys
 import time
 
-import nanojev_client
-import jev_client
-import ollama_client
-import vllm_client
-
-def detectLogTimestep(filepath, logFormat="json"):
-    if not filepath or not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
-        return -1, None
-    try:
-        if logFormat == "json":
-            with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read()
-            if not content.strip():
-                return -1, None
-            timesteps = [int(m) for m in re.findall(r'"timestep":\s*(\d+)', content)]
-            if not timesteps:
-                return -1, None
-            seed_match = re.search(r'"seed":\s*(-?\d+)', content)
-            seed = int(seed_match.group(1)) if seed_match else None
-            return max(timesteps), seed
-        elif logFormat == "csv":
-            with open(filepath, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-            if len(lines) <= 1:
-                return -1, None
-            headers = [h.strip() for h in lines[0].split(",")]
-            if "timestep" not in headers:
-                return -1, None
-            ts_idx = headers.index("timestep")
-            seed_idx = headers.index("seed") if "seed" in headers else None
-            timesteps = []
-            seed = None
-            for line in lines[1:]:
-                parts = [p.strip() for p in line.split(",") if p.strip()]
-                if len(parts) > ts_idx and parts[ts_idx].lstrip("-").isdigit():
-                    timesteps.append(int(parts[ts_idx]))
-                    if seed_idx is not None and len(parts) > seed_idx and seed is None:
-                        try:
-                            seed = int(parts[seed_idx])
-                        except ValueError:
-                            pass
-            if not timesteps:
-                return -1, None
-            return max(timesteps), seed
-    except Exception:
-        return -1, None
-    return -1, None
-
-def prepareLogFileForResume(filepath, targetTimestep, logFormat="json"):
-    if not filepath or not os.path.exists(filepath):
-        return False
-    try:
-        if logFormat == "json":
-            with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read().strip()
-            if not content:
-                return False
-            records = []
-            try:
-                loaded = json.loads(content)
-                if isinstance(loaded, list):
-                    for item in loaded:
-                        if isinstance(item, dict) and item.get("timestep", -1) <= targetTimestep:
-                            records.append(item)
-            except json.JSONDecodeError:
-                for line in content.splitlines():
-                    stripped = line.strip().rstrip(",").rstrip("]").lstrip("[")
-                    if stripped.startswith("{") and stripped.endswith("}"):
-                        try:
-                            record = json.loads(stripped)
-                            if record.get("timestep", -1) <= targetTimestep:
-                                records.append(record)
-                        except json.JSONDecodeError:
-                            pass
-            if records:
-                with open(filepath, 'w', encoding='utf-8') as f:
-                    f.write("[\n")
-                    for record in records:
-                        f.write(f"\t{json.dumps(record)},\n")
-                return True
-        elif logFormat == "csv":
-            with open(filepath, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-            if len(lines) > 1:
-                headers = [h.strip() for h in lines[0].split(",")]
-                if "timestep" in headers:
-                    ts_idx = headers.index("timestep")
-                    kept_lines = [lines[0]]
-                    for line in lines[1:]:
-                        parts = [p.strip() for p in line.split(",")]
-                        if len(parts) > ts_idx and parts[ts_idx].lstrip("-").isdigit():
-                            if int(parts[ts_idx]) <= targetTimestep:
-                                kept_lines.append(line.rstrip("\r\n") + "\n")
-                    with open(filepath, 'w', encoding='utf-8') as f:
-                        f.writelines(kept_lines)
-                    return True
-    except Exception:
-        return False
-    return False
+from clients import nanojev_client
+from clients import jev_client
+from clients import ollama_client
+from clients import vllm_client
+from sugarscape_config import parseConfiguration, parseOptions, printHelp, sortConfigurationTimeframes
+from sugarscape_log import detectLogTimestep, prepareLogFileForResume
 
 class Sugarscape:
     def __init__(self, configuration):
@@ -249,7 +155,11 @@ class Sugarscape:
         self.configureDepression()
         self.configureAgents(configuration["startingAgents"])
         self.configureDiseases(configuration["startingDiseases"], configuration["diseaseList"])
-        self.gui = gui.GUI(self, self.configuration["interfaceHeight"], self.configuration["interfaceWidth"]) if configuration["headlessMode"] == False else None
+        if configuration["headlessMode"] == False:
+            import gui
+            self.gui = gui.GUI(self, self.configuration["interfaceHeight"], self.configuration["interfaceWidth"])
+        else:
+            self.gui = None
         self.run = False # Simulation start flag
         self.end = False # Simulation end flag
         # TODO: Remove redundant metrics
@@ -514,7 +424,7 @@ class Sugarscape:
                     currStartingDiseases = minStartingDiseases
 
             if startingDiseases == [0, 0] and len(initialDiseases) > 0 and ("all" in self.debug or "sugarscape" in self.debug):
-                print(f"Could not place {len(diseases)} diseases.")
+                print(f"Could not place {len(self.diseases)} diseases.")
         elif editCell != None and editCell.isOccupied() == True:
             selectedAgent = editCell.agent
             diseaseID = self.generateDiseaseID()
@@ -1678,75 +1588,6 @@ class Sugarscape:
         string = f"{str(self.environment)}Seed: {self.seed}\nTimestep: {self.timestep}\nLiving Agents: {len(self.agents)}"
         return string
 
-def parseConfiguration(configFile, configuration):
-    file = open(configFile)
-    options = json.loads(file.read())
-    # If using the top-level config file, access correct JSON object
-    if "sugarscapeOptions" in options:
-        options = options["sugarscapeOptions"]
-
-    # Keep compatibility with outdated configuration files
-    optkeys = options.keys()
-    if "agentEthicalTheory" in optkeys:
-        options["agentDecisionModel"] = options["agentEthicalTheory"]
-    if "agentEthicalFactor" in optkeys:
-        options["agentDecisionModelFactor"] = options["agentEthicalFactor"]
-
-    for opt in configuration:
-        if opt in options:
-            configuration[opt] = options[opt]
-    return configuration
-
-def parseOptions(configuration):
-    commandLineArgs = sys.argv[1:]
-    shortOptions = "c:h:"
-    longOptions = ["conf=", "help"]
-    try:
-        args, vals = getopt.getopt(commandLineArgs, shortOptions, longOptions)
-    except getopt.GetoptError as err:
-        print(err)
-        printHelp()
-    nextArg = 0
-    for currArg, currVal in args:
-        nextArg += 1
-        if currArg in("-c", "--conf"):
-            if currVal == "":
-                print("No config file provided.")
-                printHelp()
-            parseConfiguration(currVal, configuration)
-        elif currArg in ("-h", "--help"):
-            printHelp()
-    return configuration
-
-def printHelp():
-    print("Usage:\n\tpython sugarscape.py --conf config.json\n\nOptions:\n\t-c,--conf\tUse specified config file for simulation settings.\n\t-h,--help\tDisplay this message.")
-    exit(0)
-
-def sortConfigurationTimeframes(configuration, timeframe):
-    config = configuration[timeframe]
-    if configuration != [0, 0]:
-        start = config[0]
-        end = config[1]
-        # Ensure start and end are in correct order
-        if start > end and end >= 0:
-            swap = start
-            start = end
-            end = swap
-            if "all" in configuration["debugMode"] or "sugarscape" in configuration["debugMode"] or "environment" in configuration["debugMode"]:
-                print(f"Start and end values provided for {timeframe} in incorrect order. Switching values around.")
-        # If provided a negative value, assume the start timestep is the very first of the simulation
-        if start < 0:
-            if "all" in configuration["debugMode"] or "sugarscape" in configuration["debugMode"] or "environment" in configuration["debugMode"]:
-                print(f"Start timestep {start} for {timeframe} is invalid. Setting {timeframe} start timestep to 0.")
-            start = 0
-        # If provided a negative value, assume the end timestep is the very end of the simulation
-        if end < 0:
-            if "all" in configuration["debugMode"] or "sugarscape" in configuration["debugMode"] or "environment" in configuration["debugMode"]:
-                print(f"End timestep {end} for {timeframe} is invalid. Setting {timeframe} end timestep to {configuration['timesteps']}.")
-            end = configuration["timesteps"]
-        config = [start, end]
-    return config
-
 def verifyConfiguration(configuration):
     configuration.setdefault("simulationMode", "normal")
     configuration.setdefault("agentDistributionMode", "uniform")
@@ -2129,158 +1970,3 @@ def verifyRandomSeed(configuration):
     if type(configuration["seed"]) != int or configuration["seed"] == -1:
         configuration["seed"] = random.randrange(sys.maxsize)
     random.seed(configuration["seed"])
-
-if __name__ == "__main__":
-    # Set default values for simulation configuration
-    configuration = {"agentAggressionFactor": [0, 0],
-                     "agentDistributionMode": "uniform",
-                     "agentBaseInterestRate": [0.0, 0.0],
-                     "agentDecisionModels": ["none"],
-                     "agentDecisionModel": None,
-                     "agentDecisionModelAgeismFactor": [-1, -1],
-                     "agentDecisionModelFactor": [0, 0],
-                     "agentDecisionModelLookaheadDiscount": [0, 0],
-                     "agentDecisionModelLookaheadFactor": [0],
-                     "agentDecisionModelRacismFactor": [-1, -1],
-                     "agentDecisionModelSexismFactor": [-1, -1],
-                     "agentDecisionModelTribalFactor": [-1, -1],
-                     "agentDepressionPercentage": 0,
-                     "agentDiseaseProtectionChance": [0.0, 0.0],
-                     "agentDynamicDecisionModelFactor": [0.0, 0.0],
-                     "agentDynamicSelfishnessFactor": [0.0, 0.0],
-                     "agentDynamicSocialPressureFactor": [0,1.0],
-                     "agentFemaleInfertilityAge": [0, 0],
-                     "agentFemaleFertilityAge": [0, 0],
-                     "agentFertilityFactor": [0, 0],
-                     "agentImmuneSystemLength": 0,
-                     "agentInheritancePolicy": "none",
-                     "agentLeader": False,
-                     "agentLendingFactor": [0, 0],
-                     "agentLoanDuration": [0, 0],
-                     "agentLogfile": None,
-                     "agentLookaheadFactor": [0, 0],
-                     "agentMaleInfertilityAge": [0, 0],
-                     "agentMaleFertilityAge": [0, 0],
-                     "agentMaleToFemaleRatio": 1.0,
-                     "agentMaxAge": [-1, -1],
-                     "agentMaxFriends": [0, 0],
-                     "agentMovement": [1, 6],
-                     "agentMovementMode": "cardinal",
-                     "agentRacialTagStringLength": 0,
-                     "agentReplacements": 0,
-                     "agentSelfishnessFactor": [-1, -1],
-                     "agentSpiceMetabolism": [0, 0],
-                     "agentStartingSpice": [0, 0],
-                     "agentStartingSugar": [10, 40],
-                     "agentSugarMetabolism": [1, 4],
-                     "agentTagging": False,
-                     "agentTagPreferences": False,
-                     "agentTagStringLength": 0,
-                     "agentTemperanceFactor": [0,0],
-                     "agentTradeFactor": [0, 0],
-                     "agentUniversalSpice": [0,0],
-                     "agentUniversalSugar": [0,0],
-                     "agentVision": [1, 6],
-                     "agentVisionMode": "cardinal",
-                     "debugMode": ["none"],
-                     "diseaseAggressionPenalty": [0, 0],
-                     "diseaseFertilityPenalty": [0, 0],
-                     "diseaseFriendlinessPenalty": [0, 0],
-                     "diseaseHappinessPenalty": [0,0],
-                     "diseaseIncubationPeriod": [0, 0],
-                     "diseaseList": [],
-                     "diseaseMovementPenalty": [0, 0],
-                     "diseaseSpiceMetabolismPenalty": [0, 0],
-                     "diseaseSugarMetabolismPenalty": [0, 0],
-                     "diseaseTagStringLength": [0, 0],
-                     "diseaseTimeframe": [0, 0],
-                     "diseaseTransmissionChance": [1.0, 1.0],
-                     "diseaseVisionPenalty": [0, 0],
-                     "environmentAgeistAbsoluteRanges": [],
-                     "environmentAgeistRelativeRange": -1,
-                     "environmentEquator": -1,
-                     "environmentFile": None,
-                     "environmentHeight": 50,
-                     "environmentInGroupRaces": [],
-                     "environmentMaxCombatLoot": 0,
-                     "environmentMaxRaces": 0,
-                     "environmentMaxSpice": 0,
-                     "environmentMaxSugar": 4,
-                     "environmentMaxTribes": 0,
-                     "environmentPollutionDiffusionDelay": 0,
-                     "environmentPollutionDiffusionTimeframe": [0, 0],
-                     "environmentPollutionTimeframe": [0, 0],
-                     "environmentQuadrantSizeFactor": 1,
-                     "environmentSeasonalGrowbackDelay": 0,
-                     "environmentSeasonInterval": 0,
-                     "environmentSexistGroups": [],
-                     "environmentSpiceConsumptionPollutionFactor": 0,
-                     "environmentSpicePeaks": [[35, 35, 4], [15, 15, 4]],
-                     "environmentSpiceProductionPollutionFactor": 0,
-                     "environmentSpiceRegrowRate": 0,
-                     "environmentStartingQuadrants": [1, 2, 3, 4],
-                     "environmentSugarConsumptionPollutionFactor": 0,
-                     "environmentSugarPeaks": [[35, 15, 4], [15, 35, 4]],
-                     "environmentSugarProductionPollutionFactor": 0,
-                     "environmentSugarRegrowRate": 1,
-                     "environmentTribePerQuadrant": False,
-                     "environmentUniversalSpiceIncomeInterval": 0,
-                     "environmentUniversalSugarIncomeInterval": 0,
-                     "environmentWidth": 50,
-                     "environmentWraparound": True,
-                     "experimentalGroup": None,
-                     "headlessMode": False,
-                     "interfaceHeight": 1000,
-                     "interfaceWidth": 900,
-                     "keepAlivePostExtinction": False,
-                     "keepAliveAtEnd": False,
-                     "logfile": None,
-                     "logfileFormat": "json",
-                     "neighborhoodMode": "vonNeumann",
-                     "llmBackend": "vllm",
-                     "geminiEndpoint": "https://generativelanguage.googleapis.com/v1beta",
-                     "geminiModel": "gemini-3.6-flash",
-                     "geminiApiKey": None,
-                     "geminiTimeout": 30,
-                     "geminiOptions": {"temperature": 0.2},
-                     "ollamaEndpoint": "http://127.0.0.1:11434",
-                     "ollamaModel": "llama3.1:8b",
-                     "ollamaOptions": {},
-                     "ollamaTimeout": 10,
-                     "vllmEndpoint": "http://127.0.0.1:8000/v1",
-                     "vllmModel": "meta-llama/Llama-3.1-8B-Instruct",
-                     "vllmOptions": {},
-                     "vllmTimeout": 10,
-                     "profileMode": False,
-                     "screenshots": False,
-                     "simulationMode": "normal",
-                     "agentTalk": False,
-                     "agentTalkMaxNeighbors": 1,
-                     "resumeFromLog": True,
-                     "seed": -1,
-                     "startingAgents": 250,
-                     "startingDiseases": 0,
-                     "startingDiseasesPerAgent": [0, 0],
-                     "timesteps": 250
-                     }
-    configuration = parseOptions(configuration)
-    verifyRandomSeed(configuration)
-    configuration = verifyConfiguration(configuration)
-    print("=== Simulation configuration ===")
-    print("simulationMode: " + configuration["simulationMode"])
-    print("agentDistributionMode: " + configuration["agentDistributionMode"])
-    if configuration["headlessMode"] == False:
-        import gui
-    S = Sugarscape(configuration)
-    if configuration["profileMode"] == True:
-        import cProfile
-        import tracemalloc
-        tracemalloc.start()
-        cProfile.run("S.runSimulation(configuration[\"timesteps\"])")
-        snapshot = tracemalloc.take_snapshot()
-        memoryStats = snapshot.statistics("lineno", True)
-        for stat in memoryStats[:100]:
-            print(stat)
-    else:
-        S.runSimulation(configuration["timesteps"])
-    exit(0)

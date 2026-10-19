@@ -3,7 +3,7 @@ import os
 import urllib.error
 import urllib.request
 
-from jev_client import JevClient
+from .jev_client import JevClient
 
 
 class KevClient(JevClient):

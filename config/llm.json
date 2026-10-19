@@ -134,7 +134,7 @@
             "temperature": 0.2
         },
         "ollamaEndpoint": "http://127.0.0.1:11434",
-        "ollamaModel": "gemma4:e4b",
+        "ollamaModel": "tev1:4b",
         "ollamaTimeout": 60,
         "profileMode": false,
         "screenshots": false,
