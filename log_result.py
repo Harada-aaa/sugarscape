@@ -79,28 +79,32 @@ LOG_RESULT_GROUPS = (
 		"Two LLM Results",
 		(
 			("two_llama", "llama", "#d95f02"),
-			("two_gemma", "gemma", "#1b9e77"),
+			("two_gemma3", "gemma3", "#1b9e77"),
+			("two_gemma4", "gemma4", "#7570b3"),
+			("two_qwen", "qwen", "#e7298a"),
 		),
 	),
 	(
 		"Two LLM(talk) Results",
 		(
 			("two_llama_talk", "llama(talk)", "#d95f02"),
-			("two_gemma_talk", "gemma(talk)", "#1b9e77"),
+			("two_gemma3_talk", "gemma3(talk)", "#1b9e77"),
+			("two_gemma4_talk", "gemma4(talk)", "#7570b3"),
+			("two_qwen_talk", "qwen(talk)", "#e7298a"),
 		),
 	),
 	(
 		"Four LLM Results",
 		(
 			("four_llama", "llama", "#d95f02"),
-			("four_gemma", "gemma", "#1b9e77"),
+			("four_gemma3", "gemma3", "#1b9e77"),
 		),
 	),
 	(
 		"Four LLM(talk) Results",
 		(
 			("four_llama_talk", "llama(talk)", "#d95f02"),
-			("four_gemma_talk", "gemma(talk)", "#1b9e77"),
+			("four_gemma3_talk", "gemma3(talk)", "#1b9e77"),
 		),
 	),
 	(
