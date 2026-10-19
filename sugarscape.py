@@ -1970,3 +1970,9 @@ def verifyRandomSeed(configuration):
     if type(configuration["seed"]) != int or configuration["seed"] == -1:
         configuration["seed"] = random.randrange(sys.maxsize)
     random.seed(configuration["seed"])
+
+
+if __name__ == "__main__":
+    from sugarscape_cli import main
+
+    main()
