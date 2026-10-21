@@ -6,6 +6,7 @@ import condition
 import environment
 import ethics
 from clients import gemini_client
+from clients import clef_client
 from clients import kev_client
 
 import copy
@@ -59,6 +60,10 @@ class Sugarscape(SugarscapeAgentMethods, SugarscapeSimulationMethods, Sugarscape
             self.llmClient = tev_client.TevClient(
                 configuration["tevEndpoint"], configuration["tevModel"], configuration["tevTimeout"],
                 configuration["tevOptions"])
+        elif configuration["llmBackend"] == "clef":
+            self.llmClient = clef_client.ClefClient(
+                configuration["clefEndpoint"], configuration["clefModel"], configuration["clefTimeout"],
+                configuration["clefOptions"], configuration["clefApiKey"], configuration["clefAccountId"])
         else:
             self.llmClient = vllm_client.VLLMClient(
                 configuration["vllmEndpoint"], configuration["vllmModel"], configuration["vllmTimeout"],
@@ -235,6 +240,12 @@ def verifyConfiguration(configuration):
     configuration.setdefault("tevModel", "tev1:4b")
     configuration.setdefault("tevTimeout", 60)
     configuration.setdefault("tevOptions", {})
+    configuration.setdefault("clefEndpoint", "https://api.cloudflare.com/client/v4/accounts")
+    configuration.setdefault("clefModel", "clef")
+    configuration.setdefault("clefTimeout", 30)
+    configuration.setdefault("clefOptions", {})
+    configuration.setdefault("clefApiKey", None)
+    configuration.setdefault("clefAccountId", None)
     configuration.setdefault("geminiEndpoint", "https://generativelanguage.googleapis.com/v1beta")
     configuration.setdefault("geminiModel", "gemini-3.6-flash")
     configuration.setdefault("geminiApiKey", None)
@@ -254,7 +265,7 @@ def verifyConfiguration(configuration):
     configuration.setdefault("vllmOptions", {})
     if configuration["simulationMode"] not in ["normal", "llm", "jev"]:
         configuration["simulationMode"] = "normal"
-    if configuration["llmBackend"] not in ["vllm", "ollama", "gemini", "jev", "kev", "tev1", "nanojev"]:
+    if configuration["llmBackend"] not in ["vllm", "ollama", "gemini", "jev", "kev", "tev1", "nanojev", "clef"]:
         configuration["llmBackend"] = "vllm"
     if configuration["agentDistributionMode"] not in ["uniform", "distributed"]:
         configuration["agentDistributionMode"] = "uniform"
@@ -272,6 +283,8 @@ def verifyConfiguration(configuration):
         configuration["kevTimeout"] = 10
     if configuration["tevTimeout"] <= 0:
         configuration["tevTimeout"] = 60
+    if configuration["clefTimeout"] <= 0:
+        configuration["clefTimeout"] = 30
     if not isinstance(configuration["ollamaOptions"], dict):
         configuration["ollamaOptions"] = {}
     if not isinstance(configuration["vllmOptions"], dict):
@@ -286,6 +299,8 @@ def verifyConfiguration(configuration):
         configuration["jevOptions"] = {}
     if not isinstance(configuration["tevOptions"], dict):
         configuration["tevOptions"] = {}
+    if not isinstance(configuration["clefOptions"], dict):
+        configuration["clefOptions"] = {}
     if "agentTalk" not in configuration:
         configuration["agentTalk"] = True if configuration["simulationMode"] in ["llm", "jev"] else False
     if not isinstance(configuration["agentTalk"], bool):
