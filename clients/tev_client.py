@@ -6,18 +6,16 @@ import urllib.request
 from .jev_client import JevClient
 
 
-class KevClient(JevClient):
-    def __init__(self, endpoint="http://127.0.0.1:8009/v1/systemone", model="kev-latest", timeout=10, options=None, api_key=None):
-        self.kev_api_key = api_key or os.environ.get("KEV_API_KEY")
-        super().__init__(endpoint, model, timeout, options, self.kev_api_key)
-        self.api_key = self.kev_api_key
+class TevClient(JevClient):
+    def __init__(self, endpoint="http://127.0.0.1:11434/v1/systemone", model="tev1:4b", timeout=60, options=None):
+        super().__init__(endpoint, model, timeout, options, api_key="ollama")
         try:
-            self.numParallel = max(1, int(os.environ.get("KEV_NUM_PARALLEL", "1")))
+            self.numParallel = max(1, int(os.environ.get("TEV_NUM_PARALLEL", "1")))
         except ValueError:
             self.numParallel = 1
 
     def _report_error(self, error):
-        print(f"Kev connection/request failed ({self.endpoint}, model={self.model}): {error}")
+        print(f"Tev1 connection/request failed ({self.endpoint}, model={self.model}): {error}")
 
     def _request(self, state, questions):
         request_data = {
@@ -25,9 +23,9 @@ class KevClient(JevClient):
             "model": self.model,
             "questions": questions,
         }
+        if "keep_alive" in self.options:
+            request_data["keep_alive"] = self.options["keep_alive"]
         headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
 
         request = urllib.request.Request(
             self.endpoint,

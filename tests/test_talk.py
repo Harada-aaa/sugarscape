@@ -9,6 +9,7 @@ from clients import ollama_client
 from clients import gemini_client
 from clients import jev_client
 from clients import kev_client
+from clients import tev_client
 import sugarscape
 import agent
 import cell
@@ -16,6 +17,25 @@ import environment
 
 
 class TestLLMClientsTalk(unittest.TestCase):
+    def test_tev1_client_choice_request(self):
+        client = tev_client.TevClient()
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "answers": {"move": {"choice": "1"}}
+        }).encode()
+        mock_response.__enter__.return_value = mock_response
+
+        with patch.object(tev_client.urllib.request, "urlopen", return_value=mock_response) as urlopen:
+            result = client.choose_cell({"id": 0}, [{"x": 1}, {"x": 2}])
+
+        self.assertEqual(result, 1)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://127.0.0.1:11434/v1/systemone")
+        self.assertIsNone(request.get_header("Authorization"))
+        body = json.loads(request.data.decode())
+        self.assertEqual(body["model"], "tev1:4b")
+        self.assertEqual(set(body), {"state", "model", "questions"})
+
     def test_kev_client_choice_request_without_api_key(self):
         with patch.dict(os.environ, {"KEV_API_KEY": ""}):
             client = kev_client.KevClient("http://127.0.0.1:8009/v1/systemone", "kev-latest", 10)

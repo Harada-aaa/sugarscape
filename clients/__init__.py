@@ -5,6 +5,7 @@ from .jev_client import JevClient
 from .kev_client import KevClient
 from .nanojev_client import NanoJevClient
 from .ollama_client import OllamaClient
+from .tev_client import TevClient
 from .vllm_client import VLLMClient
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "KevClient",
     "NanoJevClient",
     "OllamaClient",
+    "TevClient",
     "VLLMClient",
 ]
