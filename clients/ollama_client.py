@@ -6,11 +6,12 @@ import urllib.request
 
 
 class OllamaClient:
-    def __init__(self, endpoint, model, timeout, options=None):
+    def __init__(self, endpoint, model, timeout, options=None, think=None):
         self.endpoint = endpoint.rstrip("/")
         self.model = model
         self.timeout = timeout
         self.options = dict(options or {})
+        self.think = think
         try:
             self.numParallel = max(1, int(os.environ.get("OLLAMA_NUM_PARALLEL", "1")))
         except ValueError:
@@ -20,21 +21,32 @@ class OllamaClient:
         print(f"Ollama connection/request failed ({self.endpoint}, model={self.model}): {error}")
 
     def _request(self, prompt):
-        requestBody = json.dumps({
+        requestData = {
             "model": self.model,
             "prompt": json.dumps(prompt),
             "stream": False,
             "format": "json",
             "options": self.options
-        }).encode("utf-8")
+        }
+        if self.think is not None:
+            requestData["think"] = self.think
+        requestBody = json.dumps(requestData).encode("utf-8")
         request = urllib.request.Request(
             f"{self.endpoint}/api/generate",
             data=requestBody,
             headers={"Content-Type": "application/json"},
             method="POST"
         )
-        with urllib.request.urlopen(request, timeout=self.timeout) as response:
-            responseBody = json.loads(response.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                responseBody = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            errorBody = error.read().decode("utf-8", "replace").strip()
+            if errorBody:
+                raise urllib.error.HTTPError(
+                    error.url, error.code, f"{error.reason}: {errorBody}", error.headers, error.fp
+                ) from error
+            raise
         return json.loads(responseBody.get("response", "{}"))
 
     def choose_cell(self, agent_state, candidates):

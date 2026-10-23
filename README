@@ -19,6 +19,8 @@ python3 log_result.py
     Read all JSON logs in logs/ and save PNG charts in assets/.
     Each chart includes total and component happiness, inequality and wealth,
     population, health, social connections, and lending indicators.
+    A companion *_analysis.png chart contains the FFT frequency-response
+    analysis of meanHappiness and giniCoefficient.
 python3 log_result.py --input logs/default.json --output assets
     Plot one selected log file.
 
@@ -135,11 +137,13 @@ The simulation provides a default set of options in a dictionary in the sugarsca
 A JSON configuration file can be passed to the simulation, overwriting the default configuration, with the --conf option.
 
 simulationMode: string
-    Select "normal" for the built-in Sugarscape decision process, "llm" for text-based LLM clients, or "jev" for Jev/NanoJev structured decision clients. In LLM and Jev modes, one request is made per tribe and the response contains a decision for every living agent in that tribe. If tagging is disabled and an agent has no tribe, that agent uses its own request.
+    Select "normal" for the built-in Sugarscape decision process, "llm" for text-based LLM clients, "jev" for Jev/NanoJev structured decision clients, or "hybrid" for the Ollama two-model hybrid. In LLM, Jev, and hybrid modes, one request is made per tribe and the response contains a decision for every living agent in that tribe. If tagging is disabled and an agent has no tribe, that agent uses its own request.
+    Hybrid mode asks nimble-v3 to make simple decisions and passes difficult decisions (many or closely ranked candidates, or an agent near starvation) to qwen3. nimble-v3 is queried through Ollama's decision endpoint (/v1/systemone); qwen3 uses /api/generate with thinking disabled. Conversations use the same split.
     Default: "normal"
 
 llmBackend: string
     Select the client used when simulationMode is "llm" or "jev": "vllm", "ollama", "gemini", "jev", "kev", or "nanojev".
+    Hybrid mode always uses ollamaEndpoint and its own hybrid model options; llmBackend is ignored in hybrid mode. See config/hybrid.json for an example.
     Default: "vllm"
 
 jevEndpoint: string
@@ -210,13 +214,41 @@ ollamaTimeout: integer
     Ollama request timeout in seconds.
     Default: 10
 
+hybridNimbleModel: string
+    Ollama model used for simple decisions in hybrid mode.
+    Default: "nimble-v3:9b"
+
+hybridQwenModel: string
+    Ollama model used for difficult decisions and conversations in hybrid mode.
+    Default: "qwen3:8b"
+
+hybridTimeout: integer
+    Request timeout in seconds for the hybrid models.
+    Default: 120
+
+hybridOptions: object
+    Options passed to the hybrid clients. qwen3 receives these as Ollama generation options; nimble-v3 currently uses only "keep_alive".
+    Default: {}
+
+hybridDifficultyCandidateThreshold: integer
+    A movement decision with more than this many candidate cells is sent to qwen3 instead of nimble-v3.
+    Default: 16
+
+hybridDifficultyWealthMargin: float
+    When the two best candidate cells differ in value by no more than this fraction, the decision is sent to qwen3.
+    Default: 0.1
+
+hybridDifficultyScarcityFactor: float
+    When an agent's sugar or spice is at or below this multiple of its metabolism, movement and conversation decisions are sent to qwen3.
+    Default: 2.0
+
 agentDistributionMode: string
     Select "uniform" to give all agents the same numeric ability values or "distributed" to use the configured ranges.
     Default: "uniform"
 
 agentTalk: boolean
-    Enable natural language conversations between nearby agents when simulationMode is "llm".
-    Default: true when simulationMode is "llm", false otherwise
+    Enable natural language conversations between nearby agents when simulationMode is "llm", "jev", or "hybrid".
+    Default: true when simulationMode is "llm", "jev", or "hybrid", false otherwise
 
 agentTalkMaxNeighbors: integer
     Maximum number of nearby neighbors an agent can initiate a conversation with in a single timestep.

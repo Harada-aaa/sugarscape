@@ -19,6 +19,7 @@ import re
 import sys
 import time
 
+from clients import hybrid_client
 from clients import ollama_client
 from clients import jev_client
 from clients import nanojev_client
@@ -43,7 +44,13 @@ class Sugarscape:
         self.agentConfigHashes = None
         self.diseaseConfigHashes = None
         self.configuration = configuration
-        if configuration["llmBackend"] == "ollama":
+        if configuration["simulationMode"] == "hybrid":
+            self.llmClient = hybrid_client.HybridClient(
+                configuration["ollamaEndpoint"], configuration["hybridNimbleModel"], configuration["hybridQwenModel"],
+                configuration["hybridTimeout"], configuration["hybridOptions"],
+                configuration["hybridDifficultyCandidateThreshold"], configuration["hybridDifficultyWealthMargin"],
+                configuration["hybridDifficultyScarcityFactor"])
+        elif configuration["llmBackend"] == "ollama":
             self.llmClient = ollama_client.OllamaClient(
                 configuration["ollamaEndpoint"], configuration["ollamaModel"], configuration["ollamaTimeout"],
                 configuration["ollamaOptions"])
@@ -1635,7 +1642,12 @@ def verifyConfiguration(configuration):
     configuration.setdefault("simulationMode", "normal")
     configuration.setdefault("agentDistributionMode", "uniform")
     if "llmBackend" not in configuration:
-        configuration["llmBackend"] = "jev" if configuration["simulationMode"] == "jev" else "vllm"
+        if configuration["simulationMode"] == "jev":
+            configuration["llmBackend"] = "jev"
+        elif configuration["simulationMode"] == "hybrid":
+            configuration["llmBackend"] = "ollama"
+        else:
+            configuration["llmBackend"] = "vllm"
     configuration.setdefault("geminiEndpoint", "https://generativelanguage.googleapis.com/v1beta")
     configuration.setdefault("geminiModel", "gemini-3.6-flash")
     configuration.setdefault("geminiApiKey", None)
@@ -1669,11 +1681,18 @@ def verifyConfiguration(configuration):
     configuration.setdefault("ollamaModel", "llama3.1:8b")
     configuration.setdefault("ollamaTimeout", 10)
     configuration.setdefault("ollamaOptions", {})
+    configuration.setdefault("hybridNimbleModel", "nimble-v3:9b")
+    configuration.setdefault("hybridQwenModel", "qwen3:8b")
+    configuration.setdefault("hybridTimeout", 120)
+    configuration.setdefault("hybridOptions", {})
+    configuration.setdefault("hybridDifficultyCandidateThreshold", 16)
+    configuration.setdefault("hybridDifficultyWealthMargin", 0.1)
+    configuration.setdefault("hybridDifficultyScarcityFactor", 2.0)
     configuration.setdefault("vllmEndpoint", "http://127.0.0.1:8000/v1")
     configuration.setdefault("vllmModel", "meta-llama/Llama-3.1-8B-Instruct")
     configuration.setdefault("vllmTimeout", 10)
     configuration.setdefault("vllmOptions", {})
-    if configuration["simulationMode"] not in ["normal", "llm", "jev"]:
+    if configuration["simulationMode"] not in ["normal", "llm", "jev", "hybrid"]:
         configuration["simulationMode"] = "normal"
     if configuration["llmBackend"] not in ["vllm", "ollama", "gemini", "jev", "kev", "tev1", "nanojev", "clef"]:
         configuration["llmBackend"] = "vllm"
@@ -1683,6 +1702,8 @@ def verifyConfiguration(configuration):
         configuration["vllmTimeout"] = 10
     if configuration["ollamaTimeout"] <= 0:
         configuration["ollamaTimeout"] = 10
+    if configuration["hybridTimeout"] <= 0:
+        configuration["hybridTimeout"] = 120
     if configuration["geminiTimeout"] <= 0:
         configuration["geminiTimeout"] = 30
     if configuration["kevTimeout"] <= 0:
@@ -1693,6 +1714,24 @@ def verifyConfiguration(configuration):
         configuration["clefTimeout"] = 30
     if not isinstance(configuration["ollamaOptions"], dict):
         configuration["ollamaOptions"] = {}
+    if not isinstance(configuration["hybridOptions"], dict):
+        configuration["hybridOptions"] = {}
+    if not isinstance(configuration["hybridNimbleModel"], str) or configuration["hybridNimbleModel"] == "":
+        configuration["hybridNimbleModel"] = "nimble-v3:9b"
+    if not isinstance(configuration["hybridQwenModel"], str) or configuration["hybridQwenModel"] == "":
+        configuration["hybridQwenModel"] = "qwen3:8b"
+    try:
+        configuration["hybridDifficultyCandidateThreshold"] = max(1, int(configuration["hybridDifficultyCandidateThreshold"]))
+    except (TypeError, ValueError):
+        configuration["hybridDifficultyCandidateThreshold"] = 16
+    try:
+        configuration["hybridDifficultyWealthMargin"] = min(1.0, max(0.0, float(configuration["hybridDifficultyWealthMargin"])))
+    except (TypeError, ValueError):
+        configuration["hybridDifficultyWealthMargin"] = 0.1
+    try:
+        configuration["hybridDifficultyScarcityFactor"] = max(0.0, float(configuration["hybridDifficultyScarcityFactor"]))
+    except (TypeError, ValueError):
+        configuration["hybridDifficultyScarcityFactor"] = 2.0
     if not isinstance(configuration["vllmOptions"], dict):
         configuration["vllmOptions"] = {}
     if not isinstance(configuration["geminiOptions"], dict):
@@ -1704,9 +1743,9 @@ def verifyConfiguration(configuration):
     if not isinstance(configuration["clefOptions"], dict):
         configuration["clefOptions"] = {}
     if "agentTalk" not in configuration:
-        configuration["agentTalk"] = True if configuration["simulationMode"] in ["llm", "jev"] else False
+        configuration["agentTalk"] = True if configuration["simulationMode"] in ["llm", "jev", "hybrid"] else False
     if not isinstance(configuration["agentTalk"], bool):
-        configuration["agentTalk"] = True if configuration["simulationMode"] in ["llm", "jev"] else False
+        configuration["agentTalk"] = True if configuration["simulationMode"] in ["llm", "jev", "hybrid"] else False
     configuration.setdefault("agentTalkMaxNeighbors", 1)
     if configuration["agentTalkMaxNeighbors"] <= 0:
         configuration["agentTalkMaxNeighbors"] = 1

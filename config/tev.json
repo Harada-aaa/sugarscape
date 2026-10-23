@@ -123,7 +123,7 @@
         "jevOptions": {},
         "jevApiKey": null,
         "tevEndpoint": "http://127.0.0.1:11434/v1/systemone",
-        "tevModel": "nimble-v3:9b",
+        "tevModel": "clef-flash:9b",
         "tevTimeout": 60,
         "tevOptions": {},
         "nanojevEndpoint": "http://127.0.0.1:8765",

@@ -13,6 +13,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 INDICATOR_GROUPS = (
@@ -112,6 +113,11 @@ LOG_RESULT_GROUPS = (
 		(
 			("two_jev", "jev", "#d95f02"),
 			("two_nanojev", "nanojev", "#1b9e77"),
+			("two_tev1", "tev1", "#7570b3"),
+			("two_nimblev3", "nimblev3", "#e7298a"),
+			("two_clef", "clef", "#045cff"),
+			("two_laya", "laya", "#52024E"),
+			("two_kev", "kev", "#000705"),
 		),
 	),
 	(
@@ -160,6 +166,40 @@ def numeric_series(records: list[dict], key: str) -> tuple[list[float], list[flo
 	if not points:
 		return [], []
 	return [point[0] for point in points], [point[1] for point in points]
+
+
+def frequency_response(records: list[dict], key: str) -> tuple[np.ndarray, np.ndarray]:
+	"""Return the one-sided FFT amplitude spectrum for an indicator."""
+	x_values, y_values = numeric_series(records, key)
+	if len(x_values) < 2:
+		return np.array([]), np.array([])
+
+	# Logs can contain one record per agent at each timestep. Average those
+	# records first so the spectrum describes the social indicator over time.
+	aggregated: dict[float, list[float]] = {}
+	for timestep, value in zip(x_values, y_values):
+		aggregated.setdefault(timestep, []).append(value)
+	timesteps = np.array(sorted(aggregated))
+	values = np.array([np.mean(aggregated[timestep]) for timestep in timesteps])
+	if len(timesteps) < 2:
+		return np.array([]), np.array([])
+
+	step_sizes = np.diff(timesteps)
+	positive_steps = step_sizes[step_sizes > 0]
+	if not len(positive_steps):
+		return np.array([]), np.array([])
+	sampling_interval = float(np.median(positive_steps))
+	uniform_timesteps = np.arange(
+		timesteps[0], timesteps[-1] + sampling_interval / 2, sampling_interval
+	)
+	if len(uniform_timesteps) < 2:
+		return np.array([]), np.array([])
+	uniform_values = np.interp(uniform_timesteps, timesteps, values)
+	centered_values = uniform_values - np.mean(uniform_values)
+	amplitudes = np.abs(np.fft.rfft(centered_values)) * (2 / len(centered_values))
+	amplitudes[0] /= 2
+	frequencies = np.fft.rfftfreq(len(centered_values), d=sampling_interval)
+	return frequencies, amplitudes
 
 
 def indicator_label(key: str) -> str:
@@ -212,6 +252,59 @@ def plot_result_group(
 	return output_path
 
 
+def plot_analysis_group(
+	input_dir: Path,
+	result_name: str,
+	log_specs: tuple[tuple[str, str, str], ...],
+	output_dir: Path,
+) -> Path:
+	"""Create frequency-response plots for mean happiness and Gini coefficient."""
+	analysis_specs = (
+		("meanHappiness", "Mean happiness"),
+		("giniCoefficient", "Gini coefficient"),
+	)
+	figure, axes = plt.subplots(2, 1, figsize=(14, 10), sharex=True)
+	figure.suptitle(
+		f"Sugarscape frequency response analysis: {result_name}",
+		fontsize=18,
+		fontweight="bold",
+	)
+
+	for axis, (key, label) in zip(axes, analysis_specs):
+		plotted = 0
+		for file_stem, log_label, color in log_specs:
+			path = input_dir / f"{file_stem}.json"
+			if not path.is_file():
+				continue
+			frequencies, amplitudes = frequency_response(load_records(path), key)
+			if not len(frequencies):
+				continue
+			axis.plot(frequencies, amplitudes, label=log_label, color=color, linewidth=2)
+			plotted += 1
+		axis.set_title(label, loc="left", fontweight="bold")
+		axis.set_ylabel("Amplitude")
+		axis.grid(True, alpha=0.25)
+		if plotted:
+			axis.legend(loc="upper right", ncol=4, frameon=False, fontsize=9)
+		else:
+			axis.text(
+				0.5,
+				0.5,
+				"No matching indicators",
+				ha="center",
+				va="center",
+				transform=axis.transAxes,
+			)
+
+	axes[-1].set_xlabel("Frequency (cycles / timestep)")
+	figure.tight_layout(rect=(0, 0, 1, 0.96))
+	output_dir.mkdir(parents=True, exist_ok=True)
+	output_path = output_dir / result_name
+	figure.savefig(output_path, dpi=160, bbox_inches="tight")
+	plt.close(figure)
+	return output_path
+
+
 def plot_log(path: Path, output_dir: Path) -> Path:
 	"""Create the original single-log output for an explicitly supplied file."""
 	return plot_result_group(
@@ -246,10 +339,17 @@ def main() -> None:
 			output_name = result_name.lower().replace(" results", "_result") + ".png"
 			try:
 				output_path = plot_result_group(args.input, output_name, log_specs, args.output)
+				analysis_path = plot_analysis_group(
+					args.input,
+					output_name.replace(".png", "_analysis.png"),
+					log_specs,
+					args.output,
+				)
 			except (OSError, ValueError, json.JSONDecodeError) as error:
 				print(f"Skipping {result_name}: {error}")
 				continue
 			print(f"Saved {output_path}")
+			print(f"Saved {analysis_path}")
 		return
 
 	input_paths = [args.input] if args.input.is_file() else sorted(args.input.glob("*.json"))
@@ -259,10 +359,17 @@ def main() -> None:
 	for input_path in input_paths:
 		try:
 			output_path = plot_log(input_path, args.output)
+			analysis_path = plot_analysis_group(
+				input_path.parent,
+				f"{input_path.stem}_analysis.png",
+				((input_path.stem, input_path.stem, "#d95f02"),),
+				args.output,
+			)
 		except (OSError, ValueError, json.JSONDecodeError) as error:
 			print(f"Skipping {input_path}: {error}")
 			continue
 		print(f"Saved {output_path}")
+		print(f"Saved {analysis_path}")
 
 
 if __name__ == "__main__":
