@@ -46,7 +46,7 @@ class Sugarscape(SugarscapeAgentMethods, SugarscapeSimulationMethods, Sugarscape
         elif configuration["llmBackend"] == "ollama":
             self.llmClient = ollama_client.OllamaClient(
                 configuration["ollamaEndpoint"], configuration["ollamaModel"], configuration["ollamaTimeout"],
-                configuration["ollamaOptions"])
+                configuration["ollamaOptions"], configuration.get("ollamaThink"))
         elif configuration["llmBackend"] == "gemini":
             self.llmClient = gemini_client.GeminiClient(
                 configuration["geminiEndpoint"], configuration["geminiModel"], configuration["geminiTimeout"],

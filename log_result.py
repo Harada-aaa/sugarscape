@@ -65,6 +65,8 @@ LOG_RESULT_GROUPS = (
             ("two_gemma4", "gemma4", "#1b9e77"),
             ("two_gemma4_talk", "gemma4(talk)", "#7570b3"),
             ("two_jev", "jev", "#e7298a"),
+            ("two_hybrid", "hybrid", "#66a61e"),
+            ("two_sugarscape-llama3_2-3b", "llama3.2-3b", "#045cff"),
         ),
     ),
     (
