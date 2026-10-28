@@ -134,10 +134,7 @@
             "temperature": 0.2
         },
         "ollamaEndpoint": "http://127.0.0.1:11434",
-        "ollamaModel": "sugarscape-llama3.2-3b",
-        "ollamaOptions": {
-            "temperature": 0.2
-        },
+        "ollamaModel": "glm4:latest",
         "ollamaTimeout": 60,
         "profileMode": false,
         "screenshots": false,
