@@ -847,6 +847,7 @@ class Agent:
                         factionState.append({
                             "agent": {
                                 "id": currentFactionAgent.ID,
+                                "tribe": currentFactionAgent.tribe if currentFactionAgent.tribe is not None else "None",
                                 "age": currentFactionAgent.age,
                                 "sugar": round(currentFactionAgent.sugar, 2),
                                 "spice": round(currentFactionAgent.spice, 2),
