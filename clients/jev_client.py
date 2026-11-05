@@ -110,9 +110,18 @@ class JevClient:
         return None
 
     def choose_cells(self, faction_state):
+        """Group decision: one request decides the moves of all agents of the faction.
+
+        The information of the n agents (same faction) and their candidate
+        cells is collected in a single state and submitted as multiple named
+        questions, so a single LLM call judges every agent's move at once.
+        """
         if not faction_state:
             return {}
         decisions = {}
+        stateRecords = []
+        questions = {}
+        questionAgents = {}
         for record in faction_state:
             agent = record["agent"]
             cands = record["candidates"]
@@ -120,9 +129,28 @@ class JevClient:
             if len(cands) == 1:
                 decisions[agent_id] = 0
                 continue
-            decision = self.choose_cell(agent, cands)
-            if decision is not None:
-                decisions[agent_id] = decision
+            state_record, question = self._format_agent_state(agent, cands)
+            stateIndex = len(stateRecords)
+            stateRecords.append(state_record)
+            questionName = f"agent_{stateIndex + 1}"
+            questions[questionName] = question
+            questionAgents[questionName] = (agent_id, len(cands))
+
+        if not questions:
+            return decisions
+
+        state = {"agents": stateRecords}
+        try:
+            response = self._request(state, questions)
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError,
+                urllib.error.URLError, TimeoutError) as error:
+            self._report_error(error)
+            return decisions
+
+        for questionName, (agent_id, candidateCount) in questionAgents.items():
+            candidate = self._extract_prediction(response, questionName)
+            if candidate is not None and 0 <= candidate < candidateCount:
+                decisions[agent_id] = candidate
         return decisions
 
     def choose_cells_parallel(self, faction_states):

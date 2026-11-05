@@ -830,7 +830,22 @@ class Agent:
         if sugarscape.configuration["simulationMode"] in ["llm", "jev", "hybrid"]:
             factionID = self.tribe if self.tribe != None else f"agent-{self.ID}"
             factionKey = (self.timestep, str(factionID))
-            if factionKey not in sugarscape.llmFactionDecisions:
+            selectedCandidate = None
+            if hasattr(sugarscape, "decideFactionMoves"):
+                if factionKey not in sugarscape.llmFactionDecisions:
+                    # Group decision: the information of the n agents of this
+                    # faction is collected and one LLM call judges and returns
+                    # the destination cell of every member at once.
+                    sugarscape.decideFactionMoves(self.timestep)
+                decision = sugarscape.llmFactionDecisions.get(factionKey, {})
+                selectedCandidate = decision.get(str(self.ID))
+                if selectedCandidate is not None:
+                    # Execute the judged candidate against the exact cell list
+                    # that was presented to the LLM for this agent
+                    candidateCells = sugarscape.llmFactionCandidateCells.get(factionKey, {}).get(str(self.ID))
+                    if candidateCells is not None and 0 <= selectedCandidate < len(candidateCells):
+                        bestCell = candidateCells[selectedCandidate]
+            elif factionKey not in sugarscape.llmFactionDecisions:
                 factionStates = {}
                 for factionAgent in sugarscape.agents:
                     if not factionAgent.isAlive():
@@ -869,9 +884,13 @@ class Agent:
                 else:
                     for key, factionState in factionStates.items():
                         sugarscape.llmFactionDecisions[key] = sugarscape.llmClient.choose_cells(factionState)
-            selectedCandidate = sugarscape.llmFactionDecisions[factionKey].get(str(self.ID))
-            if selectedCandidate is not None and 0 <= selectedCandidate < len(potentialCells):
-                bestCell = potentialCells[selectedCandidate]["cell"]
+                selectedCandidate = sugarscape.llmFactionDecisions[factionKey].get(str(self.ID))
+                if selectedCandidate is not None and 0 <= selectedCandidate < len(potentialCells):
+                    bestCell = potentialCells[selectedCandidate]["cell"]
+            else:
+                selectedCandidate = sugarscape.llmFactionDecisions[factionKey].get(str(self.ID))
+                if selectedCandidate is not None and 0 <= selectedCandidate < len(potentialCells):
+                    bestCell = potentialCells[selectedCandidate]["cell"]
 
         if bestCell is None and self.decisionModelFactor > 0:
             bestCell = self.findBestEthicalCell(potentialCells[:], greedyBestCell)

@@ -37,7 +37,7 @@ AGENT_COUNT_KEYS = {"startingAgents", "startingDiseases", "startingDiseasesPerAg
 FACTION_CONFIG_PREFIXES = ["jev", "kev", "tev", "nanojev", "gemini", "ollama", "hybrid", "vllm", "clef", "llm"]
 FACTION_CONFIG_KEYS = {"simulationMode"}
 
-defaultFactionQuadrants = {1: [1, 3], 2: [2, 4]}
+defaultFactionQuadrants = {1: [1], 2: [3]}
 
 
 class GreedyClient:
@@ -94,7 +94,11 @@ class FactionClientRouter:
 			statesByClient[key]["states"].append(faction_state)
 		# Each backend receives one parallel call containing only its own factions
 		for entry in statesByClient.values():
-			clientDecisions = entry["client"].choose_cells_parallel(entry["states"])
+			client = entry["client"]
+			if hasattr(client, "choose_cells_parallel"):
+				clientDecisions = client.choose_cells_parallel(entry["states"])
+			else:
+				clientDecisions = [client.choose_cells(state) for state in entry["states"]]
 			for index, decision in zip(entry["indices"], clientDecisions):
 				decisions[index] = decision
 		return decisions
@@ -212,7 +216,11 @@ class BattleSugarscape(Sugarscape):
 
 
 def buildFactionClient(configuration):
-	"""Instantiate the client described by a faction's configuration."""
+	"""Instantiate the client described by a faction's configuration.
+	Rule-based factions ("normal" mode) always use the greedy fallback client,
+	regardless of their configured backend, so they do not make LLM requests."""
+	if configuration["simulationMode"] not in ["llm", "jev", "hybrid"]:
+		return GreedyClient()
 	if configuration["simulationMode"] == "hybrid":
 		return hybrid_client.HybridClient(
 			configuration["ollamaEndpoint"], configuration["hybridNimbleModel"], configuration["hybridQwenModel"],
@@ -247,20 +255,23 @@ def buildFactionClient(configuration):
 		return clef_client.ClefClient(
 			configuration["clefEndpoint"], configuration["clefModel"], configuration["clefTimeout"],
 			configuration["clefOptions"], configuration["clefApiKey"], configuration["clefAccountId"])
-	elif configuration["simulationMode"] in ["llm", "jev", "hybrid"]:
-		return vllm_client.VLLMClient(
-			configuration["vllmEndpoint"], configuration["vllmModel"], configuration["vllmTimeout"],
-			configuration["vllmOptions"])
 	# Rule-based faction: use the greedy fallback client
-	return GreedyClient()
+	if configuration["simulationMode"] not in ["llm", "jev", "hybrid"]:
+		return GreedyClient()
+	knownBackends = ["vllm", "ollama", "gemini", "jev", "kev", "tev1", "nanojev", "clef"]
+	if configuration["llmBackend"] not in knownBackends:
+		print(f"Warning: faction llmBackend '{configuration['llmBackend']}' is not recognized. "
+			  f"Using vLLM backend ({configuration['vllmEndpoint']}) instead. "
+			  f"Valid backends: {knownBackends}.")
+	return vllm_client.VLLMClient(
+		configuration["vllmEndpoint"], configuration["vllmModel"], configuration["vllmTimeout"],
+		configuration["vllmOptions"])
 
 
 def loadConfiguration(configFile):
 	from sugarscape_config import parseConfiguration
 	configuration = json.load(open(DEFAULT_CONFIG_PATH, encoding="utf-8"))["sugarscapeOptions"]
 	configuration = parseConfiguration(configFile, configuration)
-	configuration["logfile"] = None
-	configuration["agentLogfile"] = None
 	return configuration
 
 
@@ -351,10 +362,16 @@ def main():
 	factionFiles = parseOptions()
 	conf1 = loadConfiguration(factionFiles[0])
 	conf2 = loadConfiguration(factionFiles[1])
-	if "environmentStartingQuadrants" not in conf1:
-		conf1["environmentStartingQuadrants"] = defaultFactionQuadrants[1]
-	if "environmentStartingQuadrants" not in conf2:
-		conf2["environmentStartingQuadrants"] = defaultFactionQuadrants[2]
+	conf1["environmentStartingQuadrants"] = defaultFactionQuadrants[1]
+	conf2["environmentStartingQuadrants"] = defaultFactionQuadrants[2]
+
+	# Shared battle log files named after both factions
+	factionLogBase1 = os.path.splitext(os.path.basename(factionFiles[0]))[0]
+	factionLogBase2 = os.path.splitext(os.path.basename(factionFiles[1]))[0]
+	conf1["logfile"] = f"./logs/battle_{factionLogBase1}_vs_{factionLogBase2}.json"
+	conf1["agentLogfile"] = f"./agent_logs/battle_{factionLogBase1}_vs_{factionLogBase2}.json"
+	conf2["logfile"] = conf1["logfile"]
+	conf2["agentLogfile"] = conf1["agentLogfile"]
 	makeQuadrantsDisjoint(conf1, conf2)
 
 	merged = mergeBattleConfiguration(conf1, conf2)
